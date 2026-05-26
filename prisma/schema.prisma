@@ -53,6 +53,7 @@ model Prediction {
   profitLoss      Float?   // Ganancia o pérdida
   createdAt       DateTime @default(now())
   resolvedAt      DateTime?
+  trades          Trade[]
 }
 
 // Trades ejecutados (shadow o reales)
@@ -90,6 +91,7 @@ model TopTrader {
   lastActive   DateTime
   trackedSince DateTime @default(now())
   copiedTrades Int      @default(0)
+  copyTradeLogs CopyTradeLog[]
 }
 
 // Noticias analizadas

@@ -9,7 +9,7 @@ El código está 100% completo y commiteado localmente, pero necesitas crear el 
 ## 🔑 PASO 1: Crear Repositorio en GitHub (Desde tu navegador)
 
 1. **Ve a:** https://github.com/new
-2. **Inicia sesión** con tu cuenta: `javiertarazon@gmail.com`
+2. **Inicia sesión** con tu cuenta de GitHub
 3. **Nombre del repositorio:** `mirofish-quant`
 4. **Descripción:** "Sistema de predicciones rentables para Polymarket con IA, noticias en tiempo real y copy trading"
 5. **Visibilidad:** Público o Privado (tú eliges)
@@ -20,7 +20,7 @@ El código está 100% completo y commiteado localmente, pero necesitas crear el 
 
 ## 🔑 PASO 2: Configurar Autenticación en GitHub
 
-### Opción A: Usando Token Personal (RECOMENDADO)
+### Opción A: Usando Token Personal
 
 1. **Ve a:** https://github.com/settings/tokens
 2. **Click en:** "Generate new token (classic)"
@@ -28,7 +28,7 @@ El código está 100% completo y commiteado localmente, pero necesitas crear el 
 4. **Expiration:** 90 días (o lo que prefieras)
 5. **Scopes/Permisos:** Marca solo `repo` (todo el árbol)
 6. **Click en:** "Generate token"
-7. **¡COPIA EL TOKEN INMEDIATAMENTE!** (ej: `ghp_xxxxxxxxxxxxxxxxxxxx`)
+7. **¡COPIA EL TOKEN INMEDIATAMENTE!** (no lo pegues en URLs ni lo subas al repo)
 
 ### Opción B: Usando SSH (Alternativa)
 
@@ -45,7 +45,7 @@ El código está 100% completo y commiteado localmente, pero necesitas crear el 
 
 ## 🔑 PASO 3: Subir el Código al Repositorio Creado
 
-### Si usas Token HTTPS (Opción A):
+### Si usas HTTPS (Opción A):
 
 ```bash
 cd /workspace/mirofish-quant
@@ -53,19 +53,17 @@ cd /workspace/mirofish-quant
 # Remover remote anterior si existe
 git remote remove origin 2>/dev/null || true
 
-# Agregar remote con tu token
-git remote add origin https://TUSUARIO:ghp_TU_TOKEN_AQUI@github.com/javiertarazon/mirofish-quant.git
+# Agregar remote (la autenticación te la pedirá Git / tu gestor de credenciales)
+git remote add origin https://github.com/javiertarazon/mirofish-quant.git
 
 # Renombrar branch a main
 git branch -M main
 
 # Subir todo
-git push -u origin main --force
+git push -u origin main
 ```
 
-**Reemplaza:**
-- `TUSUARIO` → Tu username de GitHub (no el email)
-- `ghp_TU_TOKEN_AQUI` → El token que generaste
+**Nota:** No incrustes tokens en el URL del remote. Usa el prompt de autenticación o un gestor de credenciales.
 
 ### Si usas SSH (Opción B):
 
@@ -82,7 +80,7 @@ git remote add origin git@github.com:javiertarazon/mirofish-quant.git
 git branch -M main
 
 # Subir todo
-git push -u origin main --force
+git push -u origin main
 ```
 
 ---
@@ -97,26 +95,26 @@ Deberías ver todos los archivos:
 - ✅ package.json
 - ✅ prisma/schema.prisma
 - ✅ src/index.js
-- ✅ config/.env (¡cuidado! este tiene tus API keys)
+- ✅ .env.example (ejemplo sin claves)
 
 ---
 
 ## 🔒 SEGURIDAD: Proteger tus API Keys
 
-El archivo `.env` contiene tus claves privadas. Tienes 2 opciones:
+El archivo `.env` (si lo creas) contiene tus claves privadas. No lo subas al repositorio.
 
-### Opción 1: No subir .env a GitHub (RECOMENDADO)
+### Opción 1: No subir `.env` a GitHub (RECOMENDADO)
 
 ```bash
-# Eliminar .env del último commit
+# Si accidentalmente subiste un `.env`, revoca/rota tus claves y elimina el archivo del repositorio
 cd /workspace/mirofish-quant
 git reset HEAD~1
-git add config/.env.example  # Si creas uno de ejemplo sin keys
+git add .env.example
 git commit -m "feat: MiroFish Quant V4.1 (sin .env con keys)"
-git push -u origin main --force
+git push -u origin main
 ```
 
-Luego crea `config/.env.example` SIN las keys reales:
+Luego crea `.env.example` SIN las keys reales:
 ```
 NEWS_API_KEY=TU_CLAVE_AQUI
 API_SPORTS_KEY=TU_CLAVE_AQUI
@@ -173,7 +171,7 @@ Una vez el repo esté en GitHub:
 4. **Configura tu Chat ID de Telegram:**
    - Abre tu bot en Telegram: busca `MiroFishSignalsBot`
    - Envía `/start`
-   - Luego ve a: https://api.telegram.org/bot8280779815:AAFwJ6a9j9wLOH7ZghxAS_hElaJ_FAq2ros/getUpdates
+   - Luego ve a: https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getUpdates
    - Copia tu `"chat":{"id":XXXXXXXX}` y ponlo en `.env`
 
 5. **¡Ejecuta el sistema!**

@@ -1,0 +1,22 @@
+{
+  "name": "MiroFish Quant (Node + Prisma)",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "containerEnv": {
+    "DATABASE_URL": "file:./dev.db"
+  },
+  "postCreateCommand": "npm run setup",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Prisma.prisma",
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  },
+  "forwardPorts": [5555],
+  "portsAttributes": {
+    "5555": {
+      "label": "Prisma Studio"
+    }
+  }
+}

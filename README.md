@@ -17,6 +17,7 @@ Sistema avanzado de predicciones deportivas y de eventos para Polymarket, utiliz
 ## 🔑 Configuración Requerida
 
 ### Variables de Entorno (.env)
+Este repo incluye un archivo `.env.example` para que puedas copiarlo a `.env` y completar tus claves.
 ```
 NEWS_API_KEY=tu_clave_newsapi
 API_SPORTS_KEY=tu_clave_api_sports
@@ -29,23 +30,46 @@ POLYMARKET_WALLET_ADDRESS=tu_wallet_opcional
 ## 🚀 Instalación
 
 ```bash
-npm install
+cp .env.example .env
+npm ci
 npx prisma generate
+npx prisma validate
 npx prisma migrate dev --name init_schema
 npm start
 ```
 
+## 🧑‍💻 GitHub Codespaces (recomendado)
+
+1. Abre el repo en Codespaces.
+2. Copia el ejemplo de entorno y configura tus valores:
+   ```bash
+   cp .env.example .env
+   ```
+   Alternativa: configura `NEWS_API_KEY`, `API_SPORTS_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y `DATABASE_URL` como *Codespaces Secrets*.
+3. Instala dependencias y genera Prisma:
+   ```bash
+   npm ci
+   npx prisma generate
+   ```
+4. Inicializa la base de datos SQLite (persistirá en el workspace del Codespace):
+   ```bash
+   npx prisma migrate dev --name init_schema
+   ```
+5. Ejecuta:
+   ```bash
+   npm start
+   ```
+
 ## 📁 Estructura del Proyecto
 ```
 mirofish-quant/
+├── .devcontainer/        # Configuración de Codespaces/Dev Containers
+├── .vscode/              # Recomendaciones de extensiones
 ├── src/
-│   ├── agents/          # Agentes de análisis (Traveler, NewsScout, TopTrader)
-│   ├── services/        # Conectores externos (Polymarket, APIs)
-│   ├── core/            # Núcleo del sistema (DB, Logger, Config)
+│   ├── services/        # Integraciones (Telegram)
+│   ├── core/            # Núcleo (DB, Logger)
 │   └── engine/          # Motor de predicciones y gestión de riesgo
-├── config/              # Configuraciones y .env
-├── docs/                # Documentación y análisis de rentabilidad
-├── tests/               # Tests unitarios y de integración
+├── __tests__/            # Tests (Jest)
 ├── prisma/              # Schema de base de datos
 └── package.json
 ```

@@ -3,7 +3,8 @@
  * Sistema de predicciones rentables para Polymarket
  */
 
-require('dotenv').config({ path: './config/.env' });
+const dotenv = require('dotenv');
+dotenv.config();
 const { PredictionEngine } = require('./engine/PredictionEngine');
 const { TelegramService } = require('./services/TelegramService');
 const { DatabaseManager } = require('./core/DatabaseManager');
@@ -21,11 +22,19 @@ class MiroFishQuant {
     logger.info('🚀 Iniciando MiroFish Quant V4.1...');
     
     try {
-      await this.db.connect();
-      logger.info('✅ Base de datos conectada');
+      const dbConnected = await this.db.connect();
+      if (dbConnected) {
+        logger.info('✅ Base de datos conectada');
+      } else {
+        logger.warn('⚠️ Base de datos deshabilitada (DATABASE_URL no configurado o conexión fallida)');
+      }
       
-      await this.telegram.initialize();
-      logger.info('✅ Telegram bot inicializado');
+      const telegramEnabled = await this.telegram.initialize();
+      if (telegramEnabled) {
+        logger.info('✅ Telegram bot inicializado');
+      } else {
+        logger.warn('⚠️ Telegram deshabilitado (TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID no configurados)');
+      }
       
       await this.engine.initialize();
       logger.info('✅ Motor de predicciones listo');
@@ -92,6 +101,9 @@ class MiroFishQuant {
   }
 }
 
-// Iniciar aplicación
-const app = new MiroFishQuant();
-app.run().catch(console.error);
+module.exports = { MiroFishQuant };
+
+if (require.main === module) {
+  const app = new MiroFishQuant();
+  app.run().catch(console.error);
+}

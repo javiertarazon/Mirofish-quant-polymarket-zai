@@ -4,10 +4,12 @@
   "description": "Sistema de predicciones rentables para Polymarket con análisis estadístico, noticias en tiempo real y copy trading",
   "main": "src/index.js",
   "scripts": {
+    "setup": "node -e \"const fs=require('fs'); if(!fs.existsSync('.env') && fs.existsSync('.env.example')) fs.copyFileSync('.env.example','.env');\" && npm ci && prisma generate && prisma validate",
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "jest",
     "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"
   },
