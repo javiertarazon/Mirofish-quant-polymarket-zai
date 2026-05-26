@@ -48,8 +48,7 @@ npm start
    Alternativa: configura `NEWS_API_KEY`, `API_SPORTS_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` y `DATABASE_URL` como *Codespaces Secrets*.
 3. Instala dependencias y genera Prisma:
    ```bash
-   npm ci
-   npx prisma generate
+   npm run setup
    ```
 4. Inicializa la base de datos SQLite (persistirá en el workspace del Codespace):
    ```bash
@@ -59,6 +58,20 @@ npm start
    ```bash
    npm start
    ```
+
+### Verificación rápida en Codespaces
+
+```bash
+npm test
+npm run health
+```
+
+### Prisma Studio
+
+```bash
+npx prisma studio --port 5555
+```
+Luego abre el puerto `5555` desde la pestaña “Ports” en Codespaces.
 
 ## 📁 Estructura del Proyecto
 ```

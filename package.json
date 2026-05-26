@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "scripts": {
     "setup": "node -e \"const fs=require('fs'); if(!fs.existsSync('.env') && fs.existsSync('.env.example')) fs.copyFileSync('.env.example','.env');\" && npm ci && prisma generate && prisma validate",
+    "health": "node scripts/health.js",
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "jest",
