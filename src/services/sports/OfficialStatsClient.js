@@ -68,6 +68,28 @@ class OfficialStatsClient {
     };
   }
 
+  async fetchSourceSnapshots({ sport, limit = 6 } = {}) {
+    const normalizedSport = normalizeSport(sport);
+    const profile = getSourceProfile(normalizedSport);
+    const scrapeableSources = [
+      ...profile.officialStats,
+      ...profile.officialNews,
+    ].filter(source => source.scrapeable && source.url).slice(0, limit);
+
+    const pages = await Promise.all(scrapeableSources.map(source => this.fetchOfficialPage(source, {})));
+    return pages.map(page => ({
+      name: page.source?.name,
+      url: page.source?.url,
+      ok: Boolean(page.ok),
+      title: page.title || '',
+      description: page.description || '',
+      relevance: page.relevance || 0,
+      itemCount: page.items?.length || 0,
+      items: (page.items || []).slice(0, 5),
+      error: page.error || null,
+    }));
+  }
+
   async fetchOfficialPage(source, teams) {
     const cacheKey = `web:${source.url}`;
     const cached = this.cache.get(cacheKey);

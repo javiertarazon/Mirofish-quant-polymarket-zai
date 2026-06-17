@@ -49,9 +49,13 @@ class MiroFishQuant {
     const startedAt = new Date();
 
     try {
-      const markets = await this.engine.scanActiveMarkets();
+      const marketUniverse = await this.engine.scanMarketUniverse();
+      const marketsStored = await this.db.saveScannedMarkets(marketUniverse);
+      const markets = this.engine.selectMarketsForCycle(marketUniverse);
       logger.info(`Candidate markets: ${markets.length}`);
       const stats = {
+        marketsDiscovered: marketUniverse.length,
+        marketsStored,
         candidates: markets.length,
         analyzed: 0,
         rejected: 0,

@@ -129,6 +129,8 @@ function translateTitle(title = '') {
     [/^Will (.+?) win the FIFA World Cup\?$/i, '¿Ganará $1 la Copa Mundial FIFA?'],
     [/^Will (.+?) win the (\d{4}) World Cup\?$/i, '¿Ganará $1 la Copa Mundial $2?'],
     [/^Will (.+?) win the World Cup\?$/i, '¿Ganará $1 la Copa Mundial?'],
+    [/^Will (.+?) win the (\d{4}) Colombian presidential election\?$/i, '¿Ganará $1 las elecciones presidenciales de Colombia de $2?'],
+    [/^Will (.+?) win the (\d{4}) US presidential election\?$/i, '¿Ganará $1 las elecciones presidenciales de EE. UU. de $2?'],
     [/^Will (.+?) win (.+?)\?$/i, '¿Ganará $1 $2?'],
     [/^Will (.+?) be the first pick in the (\d{4}) NBA draft\?$/i, '¿Será $1 la primera selección del draft NBA $2?'],
     [/^Will (.+?) retire before next NBA season\?$/i, '¿Se retirará $1 antes de la próxima temporada de la NBA?'],

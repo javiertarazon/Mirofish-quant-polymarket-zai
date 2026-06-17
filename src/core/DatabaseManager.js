@@ -33,6 +33,14 @@ class DatabaseManager {
     });
   }
 
+  async saveScannedMarkets(markets) {
+    const records = markets.map(marketRecordFromScan).filter(Boolean);
+    for (const record of records) {
+      await this.upsertMarket(record);
+    }
+    return records.length;
+  }
+
   async savePrediction(prediction) {
     await this.upsertMarket(prediction.marketRecord);
 
@@ -129,6 +137,23 @@ class DatabaseManager {
       return false;
     }
   }
+}
+
+function marketRecordFromScan(market) {
+  if (!market?.id) return null;
+  return {
+    id: market.id,
+    title: market.title,
+    description: market.description || '',
+    sport: market.sport || 'general',
+    category: market.category || 'general',
+    outcome: market.yesOutcome || market.outcomes?.[0] || 'Yes',
+    odds: Number(market.yesPrice || 0),
+    volume: Number(market.volume || 0),
+    liquidity: Number(market.liquidity || 0),
+    expiresAt: market.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    isActive: true,
+  };
 }
 
 module.exports = { DatabaseManager };

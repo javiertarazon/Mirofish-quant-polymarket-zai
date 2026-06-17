@@ -21,14 +21,17 @@ class PredictionEngine {
   }
 
   async scanActiveMarkets() {
+    const candidates = await this.scanMarketUniverse();
+    return this.selectMarketsForCycle(candidates);
+  }
+
+  async scanMarketUniverse() {
     const events = await this.client.fetchActiveEvents();
     const markets = this.client.parseMarketsFromEvents(events);
 
-    const candidates = markets
+    return markets
       .filter((market) => this.passesStaticFilters(market))
       .sort(compareMarketPriority);
-
-    return this.selectMarketsForCycle(candidates);
   }
 
   selectMarketsForCycle(markets) {

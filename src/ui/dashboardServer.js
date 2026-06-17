@@ -6,6 +6,7 @@ const config = require('../core/Config');
 const { MiroFishQuant } = require('../index');
 const { RiskManager } = require('../engine/RiskManager');
 const { getSourceProfile, SOURCE_REGISTRY, BETTING_SOURCES } = require('../services/sports/SportsSourceRegistry');
+const { OfficialStatsClient } = require('../services/sports/OfficialStatsClient');
 const { inferSportFromText } = require('../utils/teams');
 const {
   classificationLabel,
@@ -19,7 +20,9 @@ const {
 } = require('../utils/i18n');
 
 const prisma = new PrismaClient();
+const officialStatsClient = new OfficialStatsClient();
 const publicDir = path.resolve(__dirname, '../../public');
+let sourcesCache = null;
 
 const contentTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -53,7 +56,7 @@ async function routeApi(req, url, res, cycleController) {
   if (url.pathname === '/api/trades') return sendJson(res, 200, await getTrades(Number(url.searchParams.get('limit') || 100)));
   if (url.pathname === '/api/predictions') return sendJson(res, 200, await getPredictions(Number(url.searchParams.get('limit') || 100)));
   if (url.pathname === '/api/markets') return sendJson(res, 200, await getMarkets(Number(url.searchParams.get('limit') || 100)));
-  if (url.pathname === '/api/sources') return sendJson(res, 200, getSources());
+  if (url.pathname === '/api/sources') return sendJson(res, 200, await getSources());
   if (url.pathname === '/api/config') return sendJson(res, 200, getPublicConfig());
   if (url.pathname === '/api/cycle/status') return sendJson(res, 200, cycleController.getState());
   if (url.pathname === '/api/cycle') {
@@ -380,9 +383,10 @@ async function executePrediction(predictionId) {
 }
 
 async function getMarkets(limit) {
+  const limitValue = clampLimit(limit);
   const markets = await prisma.market.findMany({
-    orderBy: [{ isActive: 'desc' }, { expiresAt: 'asc' }],
-    take: clampLimit(limit),
+    orderBy: [{ isActive: 'desc' }, { volume: 'desc' }],
+    take: 500,
     include: {
       _count: {
         select: {
@@ -415,20 +419,38 @@ async function getMarkets(limit) {
       tradeCount: market._count.trades,
       sources: getSourceProfile(sport),
     };
-  });
+  }).sort(compareMarketPresentation).slice(0, limitValue);
 }
 
-function getSources() {
-  return {
-    sports: Object.fromEntries(Object.entries(SOURCE_REGISTRY).map(([sport, profile]) => [
+async function getSources() {
+  if (sourcesCache && sourcesCache.expiresAt > Date.now()) return sourcesCache.data;
+
+  const entries = await Promise.all(Object.entries(SOURCE_REGISTRY).map(async ([sport, profile]) => {
+    const extracted = await officialStatsClient.fetchSourceSnapshots({ sport, limit: 4 });
+    return [
       sport,
       {
         ...profile,
         sportLabel: sportLabel(sport),
+        extraction: {
+          checkedAt: new Date().toISOString(),
+          checked: extracted.length,
+          ok: extracted.filter(item => item.ok).length,
+          items: extracted,
+        },
       },
-    ])),
+    ];
+  }));
+
+  const data = {
+    sports: Object.fromEntries(entries),
     betting: BETTING_SOURCES,
   };
+  sourcesCache = {
+    expiresAt: Date.now() + 10 * 60 * 1000,
+    data,
+  };
+  return data;
 }
 
 function getPublicConfig() {
@@ -542,6 +564,13 @@ function latestByMarket(predictions) {
 
 function uniqueMarketCount(rows) {
   return new Set((rows || []).map((row) => row.marketId)).size;
+}
+
+function compareMarketPresentation(a, b) {
+  const aSport = a.sport && a.sport !== 'general' ? 1 : 0;
+  const bSport = b.sport && b.sport !== 'general' ? 1 : 0;
+  if (aSport !== bSport) return bSport - aSport;
+  return Number(b.volume || 0) - Number(a.volume || 0);
 }
 
 function round(value, digits = 4) {

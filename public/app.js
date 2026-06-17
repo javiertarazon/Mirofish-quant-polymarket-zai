@@ -275,15 +275,31 @@ function renderSources() {
         <div class="stat"><span>Estadísticas oficiales</span><strong>${profile.officialStats.length}</strong></div>
         <div class="stat"><span>Noticias oficiales</span><strong>${profile.officialNews.length}</strong></div>
         <div class="stat"><span>Extraíbles</span><strong>${scrapeableCount(profile)}</strong></div>
-        <div class="stat"><span>Modo</span><strong>Web</strong></div>
+        <div class="stat"><span>Extraídas</span><strong>${profile.extraction?.ok || 0}/${profile.extraction?.checked || 0}</strong></div>
       </div>
       <div class="source-links">
         ${profile.officialStats.map(link).join('')}
         ${profile.officialNews.map(link).join('')}
       </div>
+      ${renderExtractedSources(profile.extraction)}
       <p>Externas: ${escapeHtml(profile.externalNewsDomains.join(', ') || 'ninguna')}</p>
     </article>
   `).join(''));
+}
+
+function renderExtractedSources(extraction) {
+  const items = extraction?.items || [];
+  if (!items.length) return '<p>Extracción: sin páginas verificadas.</p>';
+  return `
+    <div class="source-links extracted-links">
+      ${items.map((item) => `
+        <a href="${escapeAttr(item.url)}" target="_blank" rel="noreferrer">
+          ${escapeHtml(item.ok ? (item.title || item.name) : `${item.name}: error de extracción`)}
+          <span class="mini-badge">${item.ok ? `${item.itemCount} enlaces` : 'falló'}</span>
+        </a>
+      `).join('')}
+    </div>
+  `;
 }
 
 function renderSettings() {

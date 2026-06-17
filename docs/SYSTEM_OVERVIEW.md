@@ -5,10 +5,11 @@ MiroFish Quant V5 es un bot cuantitativo para mercados de prediccion de Polymark
 ## Flujo principal
 
 1. `src/index.js` inicia base de datos, Telegram y motor de prediccion.
-2. `PredictionEngine.scanActiveMarkets()` consulta primero eventos deportivos en Polymarket Gamma API usando `tag_slug=sports`, clasifica por deporte y selecciona candidatos con balance por `SPORTS_TARGETS`.
+2. `PredictionEngine.scanMarketUniverse()` consulta primero eventos deportivos en Polymarket Gamma API usando `tag_slug=sports`, clasifica por deporte y devuelve el universo filtrado.
 3. `PolymarketClient.parseMarketsFromEvents()` normaliza eventos y mercados.
-4. El motor aplica filtros estaticos: token disponible, mercado vigente, liquidez y volumen.
-5. Para cada mercado candidato se lee el orderbook publico CLOB.
+4. El sistema persiste todos los mercados filtrados de Polymarket en `Market`, aunque no generen señal.
+5. `PredictionEngine.selectMarketsForCycle()` selecciona un lote balanceado por `SPORTS_TARGETS` para el enjambre.
+6. Para cada mercado candidato se lee el orderbook publico CLOB.
 6. `PredictionEngine.analyzeOrderBook()` calcula best bid, best ask, precio de entrada, spread y profundidad.
 7. `PredictionEngine.estimateProbability()` genera una probabilidad base usando microestructura, liquidez y volumen.
 8. `SwarmOrchestrator` ejecuta agentes especializados y combina sus votos.
@@ -35,7 +36,7 @@ MiroFish Quant V5 es un bot cuantitativo para mercados de prediccion de Polymark
 - `src/services/news/NewsApiClient.js`: consulta NewsAPI.
 - `src/services/odds/OddsApiClient.js`: consulta The Odds API.
 - `src/services/sports/*`: registra fuentes oficiales, noticias y proveedores por deporte.
-- Las fuentes oficiales sin API dedicada se tratan como paginas scrapeables: el cliente descarga HTML, extrae titulo, descripcion y enlaces relevantes para equipos/mercados.
+- Las fuentes oficiales sin API dedicada se tratan como paginas scrapeables: el cliente descarga HTML, extrae titulo, descripcion y enlaces. `/api/sources` expone el estado de extraccion, paginas correctas y enlaces detectados.
 
 ### Motor
 
@@ -79,6 +80,7 @@ La base SQLite se define en `prisma/schema.prisma` y contiene:
 - Revisar apuestas shadow/live.
 - Explorar mercados persistidos.
 - Ver fuentes deportivas registradas.
+- Ver fuentes oficiales extraidas realmente, con conteo de paginas correctas y enlaces encontrados.
 - Ver configuracion publica sin secretos.
 - Lanzar un ciclo manual `shadow` con `POST /api/cycle`.
 - Entender señales por grado, probabilidad, EV, Kelly y acuerdo del enjambre.
