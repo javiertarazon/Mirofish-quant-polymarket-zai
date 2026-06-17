@@ -208,6 +208,12 @@ select, input {
   justify-content: space-between;
   gap: 14px;
 }
+.signal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .signal-title { font-weight: 750; line-height: 1.35; }
 .signal-meta { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
 .pill {
@@ -227,7 +233,7 @@ select, input {
 .prob-grid {
   margin-top: 14px;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
 }
 .prob-item {
@@ -245,6 +251,41 @@ select, input {
   gap: 6px;
   margin-top: 12px;
 }
+
+.quality-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.quality-flag {
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #eef2f7;
+  color: #687386;
+  font-size: 12px;
+}
+
+.quality-flag.ok {
+  background: var(--primary-weak);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.action-button {
+  min-height: 32px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.action-button:hover { filter: brightness(0.95); }
 
 .table-wrap {
   overflow: auto;
@@ -356,4 +397,7 @@ td small { display: block; color: var(--muted); margin-top: 4px; }
   }
   .metric-grid { grid-template-columns: 1fr; }
   .bar-row { grid-template-columns: 90px 1fr 64px; }
+  .prob-grid { grid-template-columns: 1fr; }
+  .signal-top { flex-direction: column; }
+  .signal-actions { justify-content: flex-start; }
 }

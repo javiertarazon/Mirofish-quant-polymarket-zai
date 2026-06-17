@@ -13,9 +13,11 @@ MiroFish Quant V5 es un bot cuantitativo para mercados de prediccion de Polymark
 7. `PredictionEngine.estimateProbability()` genera una probabilidad base usando microestructura, liquidez y volumen.
 8. `SwarmOrchestrator` ejecuta agentes especializados y combina sus votos.
 9. El motor calcula edge, gap de infravaloracion, expected value, confianza y stake Kelly.
-10. `RiskManager` valida limites de riesgo y trades abiertos.
-11. `DatabaseManager` guarda mercado, prediccion y trade shadow.
-12. `TelegramService` envia alertas si esta configurado.
+10. El motor asigna un grado de señal (`A+`, `A`, `B`, `C`) usando probabilidad, confianza, acuerdo del enjambre y valor esperado.
+11. `RiskManager` valida limites de riesgo y trades abiertos.
+12. `DatabaseManager` guarda mercado, prediccion y trade shadow.
+13. Si `AUTO_EXECUTE_SIGNALS=false`, el trade no se abre automaticamente y queda pendiente para ejecucion manual en el dashboard.
+14. `TelegramService` envia alertas y resumen de ciclo si esta configurado.
 
 ## Componentes principales
 
@@ -75,6 +77,8 @@ La base SQLite se define en `prisma/schema.prisma` y contiene:
 - Ver fuentes deportivas registradas.
 - Ver configuracion publica sin secretos.
 - Lanzar un ciclo manual `shadow` con `POST /api/cycle`.
+- Entender señales por grado, probabilidad, EV, Kelly y acuerdo del enjambre.
+- Ejecutar manualmente señales pendientes con control de riesgo mediante `POST /api/predictions/:id/execute`.
 
 El ciclo manual queda protegido por tres reglas:
 

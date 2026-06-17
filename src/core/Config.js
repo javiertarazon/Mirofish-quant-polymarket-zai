@@ -64,6 +64,9 @@ const config = {
     minProbabilityEdge: numberFromEnv('MIN_PROBABILITY_EDGE', 0.04, { min: 0, max: 1 }),
     minUndervaluationGap: numberFromEnv('MIN_UNDERVALUATION_GAP', 0.04, { min: 0, max: 1 }),
     maxMarketsPerCycle: numberFromEnv('MAX_MARKETS_PER_CYCLE', 20, { min: 1, max: 200 }),
+    highProbabilityThreshold: numberFromEnv('HIGH_PROBABILITY_THRESHOLD', 0.62, { min: 0.01, max: 0.99 }),
+    highConfidenceThreshold: numberFromEnv('HIGH_CONFIDENCE_THRESHOLD', 85, { min: 0, max: 100 }),
+    highSwarmAgreementThreshold: numberFromEnv('HIGH_SWARM_AGREEMENT_THRESHOLD', 0.6, { min: 0, max: 1 }),
   },
   topTraders: {
     minEffectiveness: numberFromEnv('TOP_TRADER_MIN_EFFECTIVENESS', 0.08, { min: -1, max: 1 }),
@@ -111,6 +114,7 @@ const config = {
   execution: {
     mode,
     liveEnabled: boolFromEnv('ENABLE_LIVE_TRADING', false),
+    autoExecuteSignals: boolFromEnv('AUTO_EXECUTE_SIGNALS', true),
     privateKey: process.env.POLYMARKET_PRIVATE_KEY || '',
     funderAddress: process.env.POLYMARKET_FUNDER_ADDRESS || '',
     chainId: numberFromEnv('POLYMARKET_CHAIN_ID', 137, { min: 1 }),

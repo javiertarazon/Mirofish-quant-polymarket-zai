@@ -76,6 +76,8 @@ function renderOverview() {
   text('metricConfidence', summary.averages.confidence === null ? '-' : `${summary.averages.confidence.toFixed(1)}%`);
   text('metricEv', num(summary.averages.expectedValue, 3));
   text('metricKelly', usd(summary.averages.kellySize));
+  text('metricHighSignals', summary.counts.highProbabilitySignals);
+  text('metricValueSignals', summary.counts.highValueSignals);
   text('metricSportsMarkets', summary.counts.sportsMarkets);
   text('metricGeneralMarkets', summary.counts.generalMarkets);
   renderSportChart();
@@ -121,6 +123,10 @@ function signalCard(item) {
   const agents = (item.agents || []).map((agent) => `
     <span class="pill ${agent.enabled ? 'active' : ''}">${escapeHtml(agent.name)} ${num(agent.score, 2)}</span>
   `).join('');
+  const gradeClass = item.quality?.grade?.startsWith('A') ? 'buy' : item.quality?.grade === 'B' ? 'warn' : '';
+  const executeButton = item.executionStatus === 'PENDING' && state.config?.execution?.manualShadowExecution
+    ? `<button class="action-button" data-execute-prediction="${item.id}">Ejecutar shadow</button>`
+    : `<span class="pill ${item.executionStatus === 'EXECUTED' ? 'active' : ''}">${escapeHtml(item.executionStatus)}</span>`;
 
   return `
     <article class="signal-card">
@@ -129,12 +135,17 @@ function signalCard(item) {
           <div class="signal-title">${escapeHtml(item.title)}</div>
           <div class="signal-meta">
             <span class="pill active">${escapeHtml(item.sport)}</span>
+            <span class="pill ${gradeClass}">Grado ${escapeHtml(item.quality?.grade || 'C')}</span>
+            <span class="pill ${item.quality?.classification === 'SWARM_CONFIRMED' ? 'buy' : item.quality?.classification === 'VALUE_ONLY' ? 'warn' : ''}">${qualityLabel(item.quality?.classification)}</span>
             <span class="pill">${escapeHtml(item.predictedOutcome)}</span>
             <span class="pill ${item.status === 'ACTIVE' ? 'active' : ''}">${escapeHtml(item.status)}</span>
             <span class="pill">${new Date(item.createdAt).toLocaleString()}</span>
           </div>
         </div>
-        <span class="pill buy">${escapeHtml(item.thesis || 'SIGNAL')}</span>
+        <div class="signal-actions">
+          <span class="pill buy">${escapeHtml(item.thesis || 'SIGNAL')}</span>
+          ${executeButton}
+        </div>
       </div>
       <div class="prob-grid">
         <div class="prob-item"><span>Modelo</span><strong>${pct(item.modelProbability)}</strong></div>
@@ -142,11 +153,28 @@ function signalCard(item) {
         <div class="prob-item"><span>Gap</span><strong>${pct(item.undervaluationGap)}</strong></div>
         <div class="prob-item"><span>EV</span><strong>${num(item.expectedValue, 4)}</strong></div>
         <div class="prob-item"><span>Kelly</span><strong>${usd(item.kellySize)}</strong></div>
+        <div class="prob-item"><span>Enjambre</span><strong>${num(item.swarmScore, 2)} / ${pct(item.swarmAgreement)}</strong></div>
+      </div>
+      <div class="quality-grid">
+        ${qualityFlag('Prob.', item.quality?.highProbability)}
+        ${qualityFlag('Conf.', item.quality?.highConfidence)}
+        ${qualityFlag('Swarm', item.quality?.positiveSwarm)}
+        ${qualityFlag('Valor', item.quality?.strongValue)}
       </div>
       <p>${escapeHtml(item.summary || '')}</p>
       <div class="agent-strip">${agents}</div>
     </article>
   `;
+}
+
+function qualityFlag(label, ok) {
+  return `<span class="quality-flag ${ok ? 'ok' : ''}">${escapeHtml(label)}</span>`;
+}
+
+function qualityLabel(value) {
+  if (value === 'SWARM_CONFIRMED') return 'Enjambre confirmado';
+  if (value === 'VALUE_ONLY') return 'Valor alto';
+  return 'Seguimiento';
 }
 
 function renderTrades() {
@@ -391,8 +419,23 @@ document.getElementById('runCycleBtn').addEventListener('click', () => {
 });
 document.getElementById('signalSearch').addEventListener('input', renderSignals);
 document.getElementById('tradeSearch').addEventListener('input', renderTrades);
+document.getElementById('signalsList').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-execute-prediction]');
+  if (!button) return;
+  executePrediction(button.dataset.executePrediction).catch((error) => {
+    setStatus('Error', error.message, false);
+    document.getElementById('statusDot').classList.add('error');
+  });
+});
 
 loadDashboard().catch((error) => {
   setStatus('Error', error.message, false);
   document.getElementById('statusDot').classList.add('error');
 });
+
+async function executePrediction(id) {
+  const response = await fetch(`/api/predictions/${id}/execute`, { method: 'POST' });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || `execute ${response.status}`);
+  await loadDashboard();
+}

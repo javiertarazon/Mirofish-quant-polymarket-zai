@@ -4,6 +4,7 @@ const fs = require('fs/promises');
 const { PrismaClient } = require('../generated/prisma');
 const config = require('../core/Config');
 const { MiroFishQuant } = require('../index');
+const { RiskManager } = require('../engine/RiskManager');
 const { getSourceProfile, SOURCE_REGISTRY, BETTING_SOURCES } = require('../services/sports/SportsSourceRegistry');
 const { inferSportFromText } = require('../utils/teams');
 
@@ -48,6 +49,12 @@ async function routeApi(req, url, res, cycleController) {
   if (url.pathname === '/api/cycle') {
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
     const result = cycleController.start();
+    return sendJson(res, result.status, result.body);
+  }
+  const executeMatch = url.pathname.match(/^\/api\/predictions\/(\d+)\/execute$/);
+  if (executeMatch) {
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+    const result = await executePrediction(Number(executeMatch[1]));
     return sendJson(res, result.status, result.body);
   }
   sendJson(res, 404, { error: 'Not found' });
@@ -177,6 +184,7 @@ async function getSummary() {
   const sportBreakdown = groupBySport(recentPredictions);
   const evBuckets = bucketExpectedValue(recentPredictions);
   const marketSportCounts = await getMarketSportCounts();
+  const signalQualityCounts = await countSportsSignalQuality();
 
   return {
     generatedAt: now.toISOString(),
@@ -191,6 +199,8 @@ async function getSummary() {
       markets,
       sportsMarkets: marketSportCounts.sportsMarkets,
       generalMarkets: marketSportCounts.generalMarkets,
+      highProbabilitySignals: signalQualityCounts.swarmConfirmed,
+      highValueSignals: signalQualityCounts.valueOnly,
       todaySignals,
     },
     averages: {
@@ -269,10 +279,73 @@ async function getPredictions(limit) {
       summary: reasoning.summary || '',
       agents: reasoning.agents || [],
       kelly: reasoning.kelly || null,
+      quality: reasoning.quality || signalQualityFromPrediction(prediction, reasoning),
+      swarmScore: reasoning.swarmScore ?? null,
+      swarmAgreement: reasoning.swarmAgreement ?? null,
       sources,
       trades: prediction.trades.length,
+      executionStatus: prediction.trades.length ? 'EXECUTED' : 'PENDING',
     };
   });
+}
+
+async function executePrediction(predictionId) {
+  if (config.execution.mode !== 'shadow') {
+    return { status: 403, body: { error: 'Manual execution is only enabled in shadow mode' } };
+  }
+
+  const prediction = await prisma.prediction.findUnique({
+    where: { id: predictionId },
+    include: { market: true, trades: true },
+  });
+  if (!prediction) return { status: 404, body: { error: 'Prediction not found' } };
+  if (prediction.trades.length) return { status: 409, body: { error: 'Prediction already has an execution' } };
+
+  const risk = new RiskManager({
+    getOpenTradeCount: () => prisma.trade.count({ where: { status: 'OPEN' } }),
+    getTodayProfitLoss: async () => {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const aggregate = await prisma.trade.aggregate({
+        where: {
+          executedAt: { gte: start },
+          profitLoss: { not: null },
+        },
+        _sum: { profitLoss: true },
+      });
+      return aggregate._sum.profitLoss || 0;
+    },
+  });
+  const gate = await risk.canOpenTrade();
+  if (!gate.allowed) return { status: 409, body: { error: gate.reason } };
+
+  const reasoning = parseJson(prediction.reasoning);
+  const entryPrice = Number(reasoning.impliedProbability ?? prediction.market?.odds ?? 0);
+  if (!entryPrice || entryPrice <= 0 || entryPrice >= 1) {
+    return { status: 422, body: { error: 'Prediction has no executable entry price' } };
+  }
+
+  const user = await prisma.user.upsert({
+    where: { email: 'system@mirofish.local' },
+    update: {},
+    create: { email: 'system@mirofish.local', name: 'MiroFish Bot' },
+  });
+  const trade = await prisma.trade.create({
+    data: {
+      userId: user.id,
+      marketId: prediction.marketId,
+      predictionId: prediction.id,
+      side: 'BUY',
+      stake: prediction.kellySize,
+      odds: entryPrice,
+      potentialProfit: prediction.kellySize * ((1 / entryPrice) - 1),
+      status: 'OPEN',
+      isShadowTrade: true,
+      notes: `Manual dashboard shadow execution for ${prediction.predictedOutcome}.`,
+    },
+  });
+
+  return { status: 201, body: { executed: true, trade } };
 }
 
 async function getMarkets(limit) {
@@ -337,6 +410,9 @@ function getPublicConfig() {
       minConfidence: config.strategy.minConfidence,
       minProbabilityEdge: config.strategy.minProbabilityEdge,
       minUndervaluationGap: config.strategy.minUndervaluationGap,
+      highProbabilityThreshold: config.strategy.highProbabilityThreshold,
+      highConfidenceThreshold: config.strategy.highConfidenceThreshold,
+      highSwarmAgreementThreshold: config.strategy.highSwarmAgreementThreshold,
     },
     swarm: {
       enabled: config.swarm.enabled,
@@ -346,6 +422,10 @@ function getPublicConfig() {
       holderWeight: config.swarm.holderWeight,
       marketMoodWeight: config.swarm.marketMoodWeight,
       externalOddsWeight: config.swarm.externalOddsWeight,
+    },
+    execution: {
+      autoExecuteSignals: config.execution.autoExecuteSignals,
+      manualShadowExecution: config.execution.mode === 'shadow',
     },
   };
 }
@@ -451,6 +531,34 @@ async function getMarketSportCounts() {
   };
 }
 
+async function countSportsSignalQuality() {
+  const predictions = await prisma.prediction.findMany({
+    select: {
+      confidence: true,
+      probability: true,
+      expectedValue: true,
+      reasoning: true,
+      market: {
+        select: {
+          title: true,
+          description: true,
+          sport: true,
+          category: true,
+        },
+      },
+    },
+  });
+  const counts = { swarmConfirmed: 0, valueOnly: 0 };
+  for (const prediction of predictions) {
+    if (resolveMarketSport(prediction.market) === 'general') continue;
+    const reasoning = parseJson(prediction.reasoning);
+    const quality = signalQualityFromPrediction(prediction, reasoning);
+    if (quality.classification === 'SWARM_CONFIRMED') counts.swarmConfirmed += 1;
+    if (quality.classification === 'VALUE_ONLY') counts.valueOnly += 1;
+  }
+  return counts;
+}
+
 function resolveMarketSport(market) {
   if (!market) return 'general';
   if (market.sport && market.sport !== 'general') return market.sport;
@@ -472,6 +580,35 @@ function bucketExpectedValue(predictions) {
   }
 
   return buckets;
+}
+
+function signalQualityFromPrediction(prediction, reasoning = {}) {
+  const swarmAgreement = Number(reasoning.swarmAgreement || 0);
+  const swarmScore = Number(reasoning.swarmScore || 0);
+  const expectedValue = Number(prediction.expectedValue || 0);
+  const probability = Number(prediction.probability || 0);
+  const confidence = Number(prediction.confidence || 0);
+  const undervaluationGap = Number(reasoning.undervaluationGap || 0);
+  const highProbability = probability >= config.strategy.highProbabilityThreshold;
+  const highConfidence = confidence >= config.strategy.highConfidenceThreshold;
+  const positiveSwarm = swarmScore > 0 && swarmAgreement >= config.strategy.highSwarmAgreementThreshold;
+  const strongValue = expectedValue >= Math.max(config.strategy.minExpectedValue * 2, 0.08)
+    && undervaluationGap >= config.strategy.minUndervaluationGap;
+  const score = [highProbability, highConfidence, positiveSwarm, strongValue].filter(Boolean).length;
+  const classification = positiveSwarm && highConfidence && strongValue
+    ? 'SWARM_CONFIRMED'
+    : highConfidence && strongValue
+      ? 'VALUE_ONLY'
+      : 'WATCHLIST';
+  return {
+    grade: score >= 4 ? 'A+' : score === 3 ? 'A' : score === 2 ? 'B' : 'C',
+    classification,
+    highProbability,
+    highConfidence,
+    positiveSwarm,
+    strongValue,
+    automaticExecutionAllowed: config.execution.autoExecuteSignals,
+  };
 }
 
 if (require.main === module) {

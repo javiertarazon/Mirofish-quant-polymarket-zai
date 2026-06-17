@@ -57,6 +57,7 @@ class MiroFishQuant {
         rejected: 0,
         signals: 0,
         executed: 0,
+        queued: 0,
       };
       const rejectionReasons = new Map();
 
@@ -75,14 +76,20 @@ class MiroFishQuant {
 
         const savedPrediction = await this.db.savePrediction(prediction);
         await this.telegram.sendSignal(prediction);
-        await this.engine.executeTrade(prediction, savedPrediction.id);
-        stats.executed += 1;
+        if (config.execution.autoExecuteSignals) {
+          await this.engine.executeTrade(prediction, savedPrediction.id);
+          stats.executed += 1;
+        } else {
+          stats.queued += 1;
+          logger.info(`Signal queued for manual execution ${prediction.marketId}`);
+        }
       }
 
       const rejectionSummary = Object.fromEntries(
         [...rejectionReasons.entries()].sort((a, b) => b[1] - a[1]),
       );
       logger.info('Trading cycle completed', { ...stats, rejectionSummary });
+      await this.telegram.sendCycleSummary({ stats, rejectionSummary });
       return {
         ok: true,
         startedAt: startedAt.toISOString(),

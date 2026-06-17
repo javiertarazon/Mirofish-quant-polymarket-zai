@@ -69,6 +69,13 @@ class PredictionEngine {
 
     const sizing = this.risk.calculateStakeDetails(signal.probability, micro.entryPrice);
     if (sizing.stake <= 0) return this.reject(market, 'risk model returned zero stake');
+    const quality = this.signalQuality({
+      confidence,
+      probability: signal.probability,
+      expectedValue,
+      undervaluationGap,
+      swarm,
+    });
 
     return {
       marketId: market.id,
@@ -90,6 +97,7 @@ class PredictionEngine {
       reasoning: {
         thesis: 'UNDERVALUED_YES',
         summary: signal.summary,
+        quality,
         publicDataOnly: true,
         impliedProbability: round(micro.entryPrice, 4),
         modelProbability: round(signal.probability, 4),
@@ -228,6 +236,41 @@ class PredictionEngine {
     const liquidityScore = clamp(Math.log10(Math.max(liquidity, 1)) / 6, 0, 1) * 10;
     const volumeScore = clamp(Math.log10(Math.max(volume, 1)) / 6, 0, 1) * 10;
     return clamp(edgeScore + evScore + spreadScore + liquidityScore + volumeScore, 0, 100);
+  }
+
+  signalQuality({ confidence, probability, expectedValue, undervaluationGap, swarm }) {
+    const highProbability = probability >= config.strategy.highProbabilityThreshold;
+    const highConfidence = confidence >= config.strategy.highConfidenceThreshold;
+    const positiveSwarm = swarm.score > 0 && swarm.agreement >= config.strategy.highSwarmAgreementThreshold;
+    const strongValue = expectedValue >= Math.max(config.strategy.minExpectedValue * 2, 0.08)
+      && undervaluationGap >= config.strategy.minUndervaluationGap;
+    const gradeScore = [
+      highProbability,
+      highConfidence,
+      positiveSwarm,
+      strongValue,
+    ].filter(Boolean).length;
+
+    const classification = positiveSwarm && highConfidence && strongValue
+      ? 'SWARM_CONFIRMED'
+      : highConfidence && strongValue
+        ? 'VALUE_ONLY'
+        : 'WATCHLIST';
+
+    return {
+      grade: gradeScore >= 4 ? 'A+' : gradeScore === 3 ? 'A' : gradeScore === 2 ? 'B' : 'C',
+      classification,
+      highProbability,
+      highConfidence,
+      positiveSwarm,
+      strongValue,
+      automaticExecutionAllowed: config.execution.autoExecuteSignals,
+      thresholds: {
+        probability: config.strategy.highProbabilityThreshold,
+        confidence: config.strategy.highConfidenceThreshold,
+        swarmAgreement: config.strategy.highSwarmAgreementThreshold,
+      },
+    };
   }
 
   reject(market, reason) {

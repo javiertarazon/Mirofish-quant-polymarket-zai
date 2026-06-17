@@ -45,6 +45,8 @@ El modo `shadow` es el modo seguro por defecto. Persiste predicciones y trades s
 - `MIN_PROBABILITY_EDGE`, `MIN_UNDERVALUATION_GAP`: edge minimo frente al precio de entrada.
 - `SPORTS_MARKETS_FOCUS=true`: consulta primero mercados con `tag_slug=sports` en Polymarket.
 - `POLYMARKET_SPORTS_TAG_SLUG=sports`: slug usado para el universo deportivo de Polymarket.
+- `HIGH_PROBABILITY_THRESHOLD`, `HIGH_CONFIDENCE_THRESHOLD`, `HIGH_SWARM_AGREEMENT_THRESHOLD`: umbrales para marcar señales deportivas grado A/A+.
+- `AUTO_EXECUTE_SIGNALS=true`: ejecuta automaticamente trades `shadow`; si es `false`, las señales quedan pendientes para ejecucion manual desde el dashboard.
 
 ## APIs externas opcionales
 
@@ -86,5 +88,7 @@ El dashboard expone endpoints locales de solo lectura y una accion manual segura
 - `GET /api/config`
 - `GET /api/cycle/status`
 - `POST /api/cycle`
+- `POST /api/predictions/:id/execute`
 
 `POST /api/cycle` solo esta permitido en `TRADING_MODE=shadow` y rechaza ciclos concurrentes.
+`POST /api/predictions/:id/execute` crea un trade `shadow` manual si la señal no fue ejecutada y el riesgo permite abrir otra posicion.
