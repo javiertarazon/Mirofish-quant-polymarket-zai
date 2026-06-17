@@ -150,7 +150,7 @@ function renderSignals() {
   const query = document.getElementById('signalSearch').value.toLowerCase();
   const rows = state.predictions
     .filter(matchesSport)
-    .filter((item) => searchable(item, query, ['title', 'sport', 'sportLabel', 'predictedOutcome', 'predictedOutcomeLabel', 'summary']))
+    .filter((item) => searchable(item, query, ['title', 'titleLabel', 'sport', 'sportLabel', 'predictedOutcome', 'predictedOutcomeLabel', 'summary']))
     .sort(sportsFirst);
 
   text('signalsCount', `${rows.length} señales`);
@@ -173,7 +173,7 @@ function signalCard(item) {
     <article class="signal-card">
       <div class="signal-top">
         <div>
-          <div class="signal-title">${escapeHtml(item.title)}</div>
+          <div class="signal-title">${escapeHtml(item.titleLabel || item.title)}</div>
           <div class="signal-meta">
             <span class="pill active">${escapeHtml(item.sportLabel || labelSport(item.sport))}</span>
             <span class="pill ${gradeClass}">Grado ${escapeHtml(item.quality?.grade || 'C')}</span>
@@ -223,13 +223,13 @@ function renderTrades() {
   const query = document.getElementById('tradeSearch').value.toLowerCase();
   const rows = state.trades
     .filter(matchesSport)
-    .filter((item) => searchable(item, query, ['title', 'sport', 'sportLabel', 'side', 'sideLabel', 'status', 'statusLabel']))
+    .filter((item) => searchable(item, query, ['title', 'titleLabel', 'sport', 'sportLabel', 'side', 'sideLabel', 'status', 'statusLabel']))
     .sort(sportsFirst);
 
   text('tradesCount', `${rows.length} apuestas`);
   html('tradesTable', rows.map((item) => `
     <tr>
-      <td><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.marketId)}</small></td>
+      <td><strong>${escapeHtml(item.titleLabel || item.title)}</strong><small>${escapeHtml(item.marketId)}</small></td>
       <td>${escapeHtml(item.sportLabel || labelSport(item.sport))}</td>
       <td><span class="pill buy">${escapeHtml(item.sideLabel || item.side)}</span></td>
       <td>${usd(item.stake)}</td>
@@ -246,7 +246,7 @@ function renderMarkets() {
   const rows = state.markets.filter(matchesSport).sort(sportsFirst);
   html('marketsGrid', rows.length ? rows.map((item) => `
     <article class="market-card">
-      <h3>${escapeHtml(item.title)}</h3>
+      <h3>${escapeHtml(item.titleLabel || item.title)}</h3>
       <div class="signal-meta">
         <span class="pill active">${escapeHtml(item.sportLabel || labelSport(item.sport))}</span>
         <span class="pill">${escapeHtml(item.categoryLabel || item.category)}</span>

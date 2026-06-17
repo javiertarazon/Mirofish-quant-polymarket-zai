@@ -25,6 +25,7 @@ const STATUS_LABELS = {
   OPEN: 'Abierta',
   CLOSED: 'Cerrada',
   CANCELLED: 'Cancelada',
+  SUPERSEDED: 'Reemplazada',
   WON: 'Ganada',
   LOST: 'Perdida',
   BUY: 'Comprar',
@@ -121,6 +122,34 @@ function translateSummary(summary = '') {
     .replace(/\bagreement\b/g, 'acuerdo');
 }
 
+function translateTitle(title = '') {
+  const text = String(title || '').trim();
+  const replacements = [
+    [/^Will (.+?) win the (\d{4}) FIFA World Cup\?$/i, '¿Ganará $1 la Copa Mundial FIFA $2?'],
+    [/^Will (.+?) win the FIFA World Cup\?$/i, '¿Ganará $1 la Copa Mundial FIFA?'],
+    [/^Will (.+?) win the (\d{4}) World Cup\?$/i, '¿Ganará $1 la Copa Mundial $2?'],
+    [/^Will (.+?) win the World Cup\?$/i, '¿Ganará $1 la Copa Mundial?'],
+    [/^Will (.+?) win (.+?)\?$/i, '¿Ganará $1 $2?'],
+    [/^Will (.+?) be the first pick in the (\d{4}) NBA draft\?$/i, '¿Será $1 la primera selección del draft NBA $2?'],
+    [/^Will (.+?) retire before next NBA season\?$/i, '¿Se retirará $1 antes de la próxima temporada de la NBA?'],
+    [/^Will (.+?) retire before next season\?$/i, '¿Se retirará $1 antes de la próxima temporada?'],
+    [/^(.+?) agree to name stadium after (.+?)\?$/i, '¿$1 aceptará nombrar el estadio en honor a $2?'],
+    [/^(.+?) vs\.? (.+)$/i, '$1 contra $2'],
+    [/^(.+?) at (.+)$/i, '$1 visita a $2'],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    if (pattern.test(text)) return text.replace(pattern, replacement);
+  }
+
+  return text
+    .replace(/\bFIFA World Cup\b/g, 'Copa Mundial FIFA')
+    .replace(/\bWorld Cup\b/g, 'Copa Mundial')
+    .replace(/\bNBA draft\b/g, 'draft NBA')
+    .replace(/\bnext NBA season\b/g, 'próxima temporada de la NBA')
+    .replace(/\bnext season\b/g, 'próxima temporada');
+}
+
 function translateNote(note = '') {
   const text = String(note);
   const replacements = [
@@ -205,4 +234,5 @@ module.exports = {
   translateNote,
   translateReason,
   translateSummary,
+  translateTitle,
 };

@@ -36,18 +36,28 @@ class DatabaseManager {
   async savePrediction(prediction) {
     await this.upsertMarket(prediction.marketRecord);
 
-    return this.prisma.prediction.create({
-      data: {
-        marketId: prediction.marketId,
-        predictedOutcome: prediction.outcome,
-        confidence: prediction.confidence,
-        probability: prediction.probability,
-        expectedValue: prediction.expectedValue,
-        kellySize: prediction.kellySize,
-        reasoning: JSON.stringify(prediction.reasoning),
-        sources: JSON.stringify(prediction.sources),
-        status: 'ACTIVE',
-      },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.prediction.updateMany({
+        where: {
+          marketId: prediction.marketId,
+          status: 'ACTIVE',
+        },
+        data: { status: 'SUPERSEDED' },
+      });
+
+      return tx.prediction.create({
+        data: {
+          marketId: prediction.marketId,
+          predictedOutcome: prediction.outcome,
+          confidence: prediction.confidence,
+          probability: prediction.probability,
+          expectedValue: prediction.expectedValue,
+          kellySize: prediction.kellySize,
+          reasoning: JSON.stringify(prediction.reasoning),
+          sources: JSON.stringify(prediction.sources),
+          status: 'ACTIVE',
+        },
+      });
     });
   }
 

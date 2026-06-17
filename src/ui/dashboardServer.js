@@ -15,6 +15,7 @@ const {
   translateAgent,
   translateReason,
   translateSummary,
+  translateTitle,
 } = require('../utils/i18n');
 
 const prisma = new PrismaClient();
@@ -151,7 +152,7 @@ async function getSummary() {
     shadowTrades,
     cancelledTrades,
     predictions,
-    activePredictions,
+    activePredictionRows,
     markets,
     todaySignals,
     avgPrediction,
@@ -162,7 +163,7 @@ async function getSummary() {
     prisma.trade.count({ where: { isShadowTrade: true } }),
     prisma.trade.count({ where: { status: 'CANCELLED' } }),
     prisma.prediction.count(),
-    prisma.prediction.count({ where: { status: 'ACTIVE' } }),
+    prisma.prediction.findMany({ where: { status: 'ACTIVE' }, select: { marketId: true } }),
     prisma.market.count(),
     prisma.prediction.count({ where: { createdAt: { gte: today } } }),
     prisma.prediction.aggregate({
@@ -176,11 +177,12 @@ async function getSummary() {
     prisma.trade.aggregate({ _avg: { stake: true, odds: true } }),
   ]);
 
-  const recentPredictions = await prisma.prediction.findMany({
+  const recentPredictionsRaw = await prisma.prediction.findMany({
     orderBy: { createdAt: 'desc' },
-    take: 30,
+    take: 500,
     select: {
       id: true,
+      marketId: true,
       confidence: true,
       probability: true,
       expectedValue: true,
@@ -190,6 +192,7 @@ async function getSummary() {
     },
   });
 
+  const recentPredictions = latestByMarket(recentPredictionsRaw).slice(0, 30);
   const sportBreakdown = groupBySport(recentPredictions);
   const evBuckets = bucketExpectedValue(recentPredictions);
   const marketSportCounts = await getMarketSportCounts();
@@ -204,7 +207,7 @@ async function getSummary() {
       shadowTrades,
       cancelledTrades,
       predictions,
-      activePredictions,
+      activePredictions: uniqueMarketCount(activePredictionRows),
       markets,
       sportsMarkets: marketSportCounts.sportsMarkets,
       generalMarkets: marketSportCounts.generalMarkets,
@@ -239,6 +242,7 @@ async function getTrades(limit) {
     id: trade.id,
     marketId: trade.marketId,
     title: trade.market?.title || trade.marketId,
+    titleLabel: translateTitle(trade.market?.title || trade.marketId),
     sport: resolveMarketSport(trade.market),
     sportLabel: sportLabel(resolveMarketSport(trade.market)),
     side: trade.side,
@@ -261,16 +265,17 @@ async function getTrades(limit) {
 }
 
 async function getPredictions(limit) {
+  const limitValue = clampLimit(limit);
   const predictions = await prisma.prediction.findMany({
     orderBy: { createdAt: 'desc' },
-    take: clampLimit(limit),
+    take: Math.min(limitValue * 5, 500),
     include: {
       market: true,
       trades: true,
     },
   });
 
-  return predictions.map((prediction) => {
+  return latestByMarket(predictions).slice(0, limitValue).map((prediction) => {
     const reasoning = parseJson(prediction.reasoning);
     const sources = parseJson(prediction.sources);
     const sport = resolveMarketSport(prediction.market);
@@ -280,6 +285,7 @@ async function getPredictions(limit) {
       id: prediction.id,
       marketId: prediction.marketId,
       title: prediction.market?.title || prediction.marketId,
+      titleLabel: translateTitle(prediction.market?.title || prediction.marketId),
       sport,
       sportLabel: sportLabel(sport),
       predictedOutcome: prediction.predictedOutcome,
@@ -392,6 +398,7 @@ async function getMarkets(limit) {
     return {
       id: market.id,
       title: market.title,
+      titleLabel: translateTitle(market.title),
       sport,
       sportLabel: sportLabel(sport),
       category: market.category,
@@ -522,6 +529,21 @@ function clampLimit(value) {
   return Math.max(1, Math.min(Number.isFinite(value) ? value : 100, 500));
 }
 
+function latestByMarket(predictions) {
+  const seen = new Set();
+  const rows = [];
+  for (const prediction of predictions) {
+    if (seen.has(prediction.marketId)) continue;
+    seen.add(prediction.marketId);
+    rows.push(prediction);
+  }
+  return rows;
+}
+
+function uniqueMarketCount(rows) {
+  return new Set((rows || []).map((row) => row.marketId)).size;
+}
+
 function round(value, digits = 4) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return null;
   const factor = 10 ** digits;
@@ -572,8 +594,10 @@ async function getMarketSportCounts() {
 }
 
 async function countSportsSignalQuality() {
-  const predictions = await prisma.prediction.findMany({
+  const predictionsRaw = await prisma.prediction.findMany({
+    orderBy: { createdAt: 'desc' },
     select: {
+      marketId: true,
       confidence: true,
       probability: true,
       expectedValue: true,
@@ -589,7 +613,7 @@ async function countSportsSignalQuality() {
     },
   });
   const counts = { swarmConfirmed: 0, valueOnly: 0 };
-  for (const prediction of predictions) {
+  for (const prediction of latestByMarket(predictionsRaw)) {
     if (resolveMarketSport(prediction.market) === 'general') continue;
     const reasoning = parseJson(prediction.reasoning);
     const quality = signalQualityFromPrediction(prediction, reasoning);

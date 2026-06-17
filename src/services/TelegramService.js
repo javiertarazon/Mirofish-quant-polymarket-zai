@@ -7,6 +7,7 @@ const {
   thesisLabel,
   translateReason,
   translateSummary,
+  translateTitle,
 } = require('../utils/i18n');
 
 class TelegramService {
@@ -38,7 +39,7 @@ class TelegramService {
     const message = [
       `Señal MiroFish (${statusLabel(prediction.mode)}) ${quality.grade ? `Grado ${quality.grade}` : ''}`,
       ``,
-      `${prediction.title}`,
+      `${translateTitle(prediction.title)}`,
       `Tesis: ${thesisLabel(prediction.reasoning?.thesis || 'SIGNAL')}`,
       `Lado: ${statusLabel(prediction.side)} ${statusLabel(prediction.outcome)}`,
       `Entrada: ${round(prediction.entryPrice, 4)}`,
