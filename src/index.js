@@ -1,9 +1,8 @@
 /**
- * MiroFish Quant V4.1 - Main Entry Point
- * Sistema de predicciones rentables para Polymarket
+ * MiroFish Quant - Main Entry Point
  */
 
-require('dotenv').config({ path: './config/.env' });
+const config = require('./core/Config');
 const { PredictionEngine } = require('./engine/PredictionEngine');
 const { TelegramService } = require('./services/TelegramService');
 const { DatabaseManager } = require('./core/DatabaseManager');
@@ -13,85 +12,143 @@ class MiroFishQuant {
   constructor() {
     this.db = new DatabaseManager();
     this.telegram = new TelegramService();
-    this.engine = new PredictionEngine();
+    this.engine = new PredictionEngine(this.db);
     this.isRunning = false;
+    this.timer = null;
   }
 
   async initialize() {
-    logger.info('🚀 Iniciando MiroFish Quant V4.1...');
-    
+    logger.info(`Starting ${config.app.name} ${config.app.version}`);
+
     try {
       await this.db.connect();
-      logger.info('✅ Base de datos conectada');
-      
+      await this.db.ensureSystemUser();
+      logger.info('Database connected');
+
       await this.telegram.initialize();
-      logger.info('✅ Telegram bot inicializado');
-      
+      logger.info('Telegram initialized');
+
       await this.engine.initialize();
-      logger.info('✅ Motor de predicciones listo');
-      
-      logger.info('🎯 Sistema listo para operar');
+      logger.info('Prediction engine ready');
+
       return true;
     } catch (error) {
-      logger.error('❌ Error en inicialización:', error);
+      logger.error('Initialization failed', error);
       return false;
     }
   }
 
   async startTradingCycle() {
-    if (!this.isRunning) {
-      this.isRunning = true;
-      logger.info('🔄 Iniciando ciclo de trading...');
-      
-      // Escanear mercados activos
+    if (this.isRunning) {
+      logger.warn('Previous cycle still running; skipping overlap');
+      return { skipped: true, reason: 'Previous cycle still running' };
+    }
+
+    this.isRunning = true;
+    logger.info('Starting trading cycle');
+    const startedAt = new Date();
+
+    try {
       const markets = await this.engine.scanActiveMarkets();
-      logger.info(`📊 Mercados encontrados: ${markets.length}`);
-      
-      // Generar predicciones
+      logger.info(`Candidate markets: ${markets.length}`);
+      const stats = {
+        candidates: markets.length,
+        analyzed: 0,
+        rejected: 0,
+        signals: 0,
+        executed: 0,
+      };
+      const rejectionReasons = new Map();
+
       for (const market of markets) {
+        stats.analyzed += 1;
         const prediction = await this.engine.generatePrediction(market);
-        
-        if (prediction && prediction.confidence >= 70) {
-          logger.info(`🎯 Predicción generada: ${prediction.marketId} - Confianza: ${prediction.confidence}%`);
-          
-          // Guardar predicción
-          await this.db.savePrediction(prediction);
-          
-          // Enviar señal a Telegram
-          await this.telegram.sendSignal(prediction);
-          
-          // Ejecutar trade (shadow o real)
-          if (prediction.kellySize > 0) {
-            await this.engine.executeTrade(prediction);
-          }
+        if (!prediction) {
+          stats.rejected += 1;
+          const reason = this.engine.lastRejection?.reason || 'no signal';
+          rejectionReasons.set(reason, (rejectionReasons.get(reason) || 0) + 1);
+          continue;
         }
+        stats.signals += 1;
+
+        logger.info(`Signal ${prediction.marketId}: confidence ${prediction.confidence}% EV ${prediction.expectedValue}`);
+
+        const savedPrediction = await this.db.savePrediction(prediction);
+        await this.telegram.sendSignal(prediction);
+        await this.engine.executeTrade(prediction, savedPrediction.id);
+        stats.executed += 1;
       }
-      
+
+      const rejectionSummary = Object.fromEntries(
+        [...rejectionReasons.entries()].sort((a, b) => b[1] - a[1]),
+      );
+      logger.info('Trading cycle completed', { ...stats, rejectionSummary });
+      return {
+        ok: true,
+        startedAt: startedAt.toISOString(),
+        completedAt: new Date().toISOString(),
+        stats,
+        rejectionSummary,
+      };
+    } catch (error) {
+      const errorInfo = {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+      };
+      logger.error('Trading cycle failed', errorInfo);
+      return {
+        ok: false,
+        startedAt: startedAt.toISOString(),
+        completedAt: new Date().toISOString(),
+        error: errorInfo,
+      };
+    } finally {
       this.isRunning = false;
-      logger.info('✅ Ciclo de trading completado');
     }
   }
 
   async run() {
     const initialized = await this.initialize();
-    
+
     if (!initialized) {
       logger.error('No se pudo iniciar el sistema. Saliendo...');
       process.exit(1);
     }
-    
-    // Ejecutar ciclo inicial
+
     await this.startTradingCycle();
-    
-    // Programar próximos ciclos (cada 30 minutos)
-    setInterval(() => {
+
+    if (config.app.runOnce) {
+      await this.shutdown();
+      return;
+    }
+
+    this.timer = setInterval(() => {
       this.startTradingCycle();
-    }, 30 * 60 * 1000);
-    
-    logger.info('⏰ Sistema programado para ejecutar cada 30 minutos');
+    }, config.app.cycleMs);
+
+    logger.info(`Scheduler enabled every ${Math.round(config.app.cycleMs / 1000)} seconds`);
+  }
+
+  async shutdown() {
+    if (this.timer) clearInterval(this.timer);
+    await this.db.disconnect();
+    logger.info('Shutdown complete');
   }
 }
 
-// Iniciar aplicación
 const app = new MiroFishQuant();
-app.run().catch(console.error);
+
+process.on('SIGINT', () => app.shutdown().then(() => process.exit(0)));
+process.on('SIGTERM', () => app.shutdown().then(() => process.exit(0)));
+
+if (require.main === module) {
+  app.run().catch((error) => {
+    logger.error('Fatal error', error);
+    process.exit(1);
+  });
+}
+
+module.exports = { MiroFishQuant };

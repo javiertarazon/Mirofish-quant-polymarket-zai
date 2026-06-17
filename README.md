@@ -1,80 +1,144 @@
-# MiroFish Quant V4.1 - Sistema de Predicciones Rentables para Polymarket
+# MiroFish Quant V5
 
-## 🎯 Descripción
-Sistema avanzado de predicciones deportivas y de eventos para Polymarket, utilizando:
-- **Análisis estadístico** en tiempo real (NBA, NFL, MLB, Fútbol, UFC, Boxeo)
-- **Noticias de última hora** vía NewsAPI
-- **Copy Trading** de los mejores apostadores de Polymarket
-- **Modelos Ensemble** con ponderación inteligente
-- **Gestión de riesgo profesional** (Kelly Criterion)
+Bot cuantitativo para Polymarket con escaneo de mercados activos, lectura de orderbooks públicos, generación de señales, gestión de riesgo y ejecución `shadow` persistida en SQLite.
 
-## 📊 Métricas Proyectadas
-- **Win Rate:** 58-65%
-- **ROI Mensual:** +12% a +25%
-- **Profit Factor:** 1.8-2.5
-- **Max Drawdown:** 15-25%
+## Estado
 
-## 🔑 Configuración Requerida
+El bot es operativo en modo simulación. El modo real queda bloqueado de forma deliberada hasta configurar y auditar firma CLOB, wallet, permisos y límites operativos. No hay garantía de rentabilidad; úsalo primero para backtesting, paper trading y monitoreo.
 
-### Variables de Entorno (.env)
-```
-NEWS_API_KEY=tu_clave_newsapi
-API_SPORTS_KEY=tu_clave_api_sports
-TELEGRAM_BOT_TOKEN=tu_token_telegram
-TELEGRAM_CHAT_ID=tu_chat_id
-DATABASE_URL=file:./dev.db
-POLYMARKET_WALLET_ADDRESS=tu_wallet_opcional
-```
+## Qué hace
 
-## 🚀 Instalación
+- Lee eventos activos desde Gamma API.
+- Lee orderbooks desde CLOB API pública.
+- Ejecuta un enjambre de agentes para enriquecer la señal.
+- Filtra por liquidez, volumen, spread, EV, edge y confianza.
+- Calcula tamaño de posición con Kelly fraccionado y límites de pérdida.
+- Guarda mercados, predicciones, alertas y trades shadow en SQLite.
+- Envía señales por Telegram si se configura.
+- Expone un dashboard local para monitoreo y ejecución manual segura de ciclos `shadow`.
+
+## Documentación
+
+- [Requisitos técnicos y operativos](docs/REQUIREMENTS.md)
+- [Explicación completa del sistema](docs/SYSTEM_OVERVIEW.md)
+
+## Instalación
 
 ```bash
 npm install
+cp .env.example .env
 npx prisma generate
 npx prisma migrate dev --name init_schema
 npm start
 ```
 
-## 📁 Estructura del Proyecto
+Dashboard local:
+
+```bash
+npm run dashboard
+```
+
+Abre `http://127.0.0.1:3000`. El botón de ejecución manual lanza un ciclo solo si `TRADING_MODE=shadow`.
+
+Para ejecutar una sola pasada:
+
+```bash
+RUN_ONCE=true npm start
+```
+
+Para revisar o limpiar trades `shadow` abiertos de una simulación local:
+
+```bash
+npm run reset:shadow
+npm run reset:shadow -- --apply
+```
+
+El primer comando solo muestra un `dry-run`; el segundo marca los trades `shadow` abiertos como `CANCELLED`.
+
+Para comprobar flujo reciente de top traders en mercados deportivos:
+
+```bash
+npm run report:top-sports
+```
+
+Para listar las fuentes oficiales, externas y de odds registradas por deporte:
+
+```bash
+npm run sources:sports
+```
+
+## Estructura
+
 ```
 mirofish-quant/
 ├── src/
-│   ├── agents/          # Agentes de análisis (Traveler, NewsScout, TopTrader)
-│   ├── services/        # Conectores externos (Polymarket, APIs)
-│   ├── core/            # Núcleo del sistema (DB, Logger, Config)
-│   └── engine/          # Motor de predicciones y gestión de riesgo
-├── config/              # Configuraciones y .env
-├── docs/                # Documentación y análisis de rentabilidad
+│   ├── core/            # Config, logger, Prisma
+│   ├── agents/          # Enjambre de agentes
+│   ├── services/        # Polymarket, deportes, noticias, odds y Telegram
+│   ├── engine/          # Señales, riesgo y ejecución shadow
+│   ├── ui/              # Servidor del dashboard
+│   └── utils/           # Utilidades
+├── public/              # Dashboard web
+├── docs/                # Requisitos y explicación del sistema
+├── config/              # .env.example y .env local
 ├── tests/               # Tests unitarios y de integración
 ├── prisma/              # Schema de base de datos
 └── package.json
 ```
 
-## 🏆 Deportes Soportados
-- 🏀 NBA (Baloncesto)
-- 🏈 NFL (Fútbol Americano)
-- ⚾ MLB (Béisbol)
-- ⚽ Fútbol Soccer (Premier League, La Liga, Champions)
-- 🥊 UFC/MMA
-- 🥊 Boxeo
+## Variables clave
 
-## 🤖 Copy Trading Inteligente
-El sistema monitorea automáticamente las wallets de los top traders de Polymarket:
-- Filtra por Win Rate > 60%
-- Requiere mínimo 50 trades históricos
-- Profit Factor > 1.2
-- Ponderación del 25% en la predicción final
+Edita `.env`:
 
-## 📡 Notificaciones
-Recibe señales en tiempo real vía Telegram con:
-- Mercado objetivo
-- Probabilidad calculada
-- Tamaño de apuesta recomendado (Kelly)
-- Nivel de confianza
-- Razones de la predicción
+- `TRADING_MODE=shadow`: modo seguro por defecto.
+- `BANKROLL_USDC`, `MAX_STAKE_USDC`, `MAX_STAKE_PCT`: límites de riesgo.
+- `MIN_LIQUIDITY`, `MIN_VOLUME`, `MAX_SPREAD`: filtros de calidad.
+- `MIN_PROBABILITY_EDGE`, `MIN_UNDERVALUATION_GAP`: diferencia mínima entre probabilidad del modelo y probabilidad implícita de entrada.
+- `TOP_TRADER_MIN_EFFECTIVENESS`, `TOP_TRADER_MIN_MONTHLY_VOLUME`, `TOP_TRADER_MIN_RELEVANT_NOTIONAL`: filtros de whale tracking usando datos públicos de Polymarket.
+- `TELEGRAM_ENABLED`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`: alertas.
 
-## ⚠️ Disclaimer
-Este sistema es una herramienta de análisis. El trading en Polymarket conlleva riesgos. Opera responsablemente y nunca arriesgues más de lo que puedas perder.
+Consulta [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) para la lista completa.
 
-## 📄 Licencia
+## Enjambre de agentes
+
+El sistema tiene una capa multiagente activada por `SWARM_ENABLED=true`:
+
+- `news_sentiment`: consulta NewsAPI y mide sentimiento de titulares/descripciones.
+- `sports_context`: estima local/visitante, distancia de viaje y contexto de fixture si API-Sports está configurado.
+- `top_traders`: consulta leaderboard y trades públicos de Polymarket; filtra whales por efectividad `PnL / volumen`, volumen mensual y notional relevante.
+- `holder_concentration`: consulta holders por mercado para detectar concentración excesiva.
+- `market_mood`: mide skew de profundidad, liquidez y spread desde el orderbook.
+- `external_odds`: compara el precio de Polymarket contra cuotas externas si The Odds API está configurada.
+
+Cada agente devuelve `score`, `confidence`, `probabilityShift`, notas y datos. El `SwarmOrchestrator` combina los votos con pesos configurables y ajusta la probabilidad final dentro de `MAX_SWARM_PROBABILITY_SHIFT`.
+
+Deportes cubiertos por fuentes registradas:
+
+- MLB/baseball: MLB Stats API, MLB.com, Baseball Savant.
+- NBA: NBA Stats y NBA News.
+- NFL: NFL Stats y Next Gen Stats.
+- Fútbol/soccer: FIFA, Premier League, UEFA, LaLiga.
+- Formula 1: FIA y Formula1.com.
+- MotoGP: MotoGP results, stats y news.
+- UFC/MMA: UFC Stats, UFC rankings y UFC News.
+- Boxeo: BoxRec, WBA, WBC, IBF y WBO.
+
+APIs opcionales:
+
+- `NEWS_API_KEY`: activa noticias deportivas y sentimiento.
+- `API_SPORTS_KEY`: activa contexto de fixtures en proveedores API-Sports compatibles.
+- `ODDS_API_KEY`: activa consenso de cuotas externas usando The Odds API.
+- `POLYMARKET_DATA_URL`: leaderboard y holders públicos de Polymarket.
+
+## Seguridad
+
+Nunca subas `.env`, `config/.env` ni claves privadas. Si algún token se publicó antes, rótalo antes de usar el bot.
+
+El modo `live` está bloqueado deliberadamente en esta versión. La ejecución real requiere integrar y auditar firma CLOB oficial, wallet, permisos, límites operativos y monitoreo antes de habilitar órdenes reales.
+
+## Disclaimer
+
+Este software es una herramienta de análisis y automatización. Los mercados de predicción tienen riesgo de pérdida total, baja liquidez, spreads amplios y cambios regulatorios. Opera bajo tu propia responsabilidad.
+
+## Licencia
 MIT License

@@ -1,12 +1,17 @@
 {
   "name": "mirofish-quant",
-  "version": "4.1.0",
-  "description": "Sistema de predicciones rentables para Polymarket con análisis estadístico, noticias en tiempo real y copy trading",
+  "version": "5.0.0",
+  "description": "Bot cuantitativo para Polymarket con escaneo de mercados, señales, gestión de riesgo y ejecución shadow",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
+    "dashboard": "node src/ui/dashboardServer.js",
     "dev": "nodemon src/index.js",
-    "test": "jest",
+    "test": "node --test",
+    "check": "npm test",
+    "reset:shadow": "node scripts/reset-shadow-trades.js",
+    "sources:sports": "node scripts/list-sports-sources.js",
+    "report:top-sports": "node scripts/top-sports-flow-report.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"
@@ -18,20 +23,18 @@
     "sports-betting",
     "crypto",
     "ai",
-    "machine-learning"
+    "risk-management"
   ],
   "author": "MiroFish Quant Team",
   "license": "MIT",
   "dependencies": {
-    "@prisma/client": "^5.0.0",
+    "@prisma/client": "6.19.3",
     "axios": "^1.6.0",
     "dotenv": "^16.3.1",
-    "node-telegram-bot-api": "^0.64.0",
     "winston": "^3.11.0"
   },
   "devDependencies": {
-    "prisma": "^5.0.0",
-    "nodemon": "^3.0.2",
-    "jest": "^29.7.0"
+    "prisma": "6.19.3",
+    "nodemon": "^3.0.2"
   }
 }

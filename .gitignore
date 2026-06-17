@@ -1,6 +1,7 @@
 node_modules/
 *.log
 .env
+config/.env
 .DS_Store
 coverage/
 dist/
@@ -10,4 +11,4 @@ build/
 *~
 dev.db
 dev.db-journal
-prisma/migrations/
+src/generated/

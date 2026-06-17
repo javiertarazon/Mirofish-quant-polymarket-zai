@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MiroFish Quant Dashboard</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">MQ</div>
+        <div>
+          <strong>MiroFish Quant</strong>
+          <span>Polymarket Sports Desk</span>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="overview">Resumen</button>
+        <button class="nav-item" data-view="signals">Señales</button>
+        <button class="nav-item" data-view="trades">Apuestas</button>
+        <button class="nav-item" data-view="markets">Mercados</button>
+        <button class="nav-item" data-view="sources">Fuentes</button>
+        <button class="nav-item" data-view="settings">Riesgo</button>
+      </nav>
+      <div class="status-panel">
+        <span class="status-dot" id="statusDot"></span>
+        <div>
+          <strong id="statusText">Conectando</strong>
+          <span id="statusMeta">Esperando datos</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <h1 id="viewTitle">Resumen</h1>
+          <p id="viewSubtitle">Estado operativo, probabilidades, señales y riesgo.</p>
+        </div>
+        <div class="top-actions">
+          <div class="cycle-status" id="cycleStatus">Ciclo inactivo</div>
+          <button id="runCycleBtn" class="icon-button" title="Ejecutar ciclo shadow">▶</button>
+          <select id="sportFilter" aria-label="Filtrar deporte">
+            <option value="all">Todos los deportes</option>
+          </select>
+          <button id="refreshBtn" class="icon-button" title="Actualizar">↻</button>
+        </div>
+      </header>
+
+      <section id="overview" class="view active">
+        <div class="metric-grid">
+          <article class="metric"><span>Señales</span><strong id="metricPredictions">0</strong><small>Predicciones guardadas</small></article>
+          <article class="metric"><span>Apuestas shadow</span><strong id="metricTrades">0</strong><small>Historial local</small></article>
+          <article class="metric"><span>Abiertas</span><strong id="metricOpen">0</strong><small>Límite de riesgo activo</small></article>
+          <article class="metric"><span>Confianza media</span><strong id="metricConfidence">0%</strong><small>Modelo + agentes</small></article>
+          <article class="metric"><span>EV medio</span><strong id="metricEv">0</strong><small>Expected value</small></article>
+          <article class="metric"><span>Kelly medio</span><strong id="metricKelly">$0</strong><small>Stake sugerido</small></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Probabilidad Por Deporte</h2>
+              <span>Últimas señales</span>
+            </div>
+            <div id="sportChart" class="bar-chart"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Distribución EV</h2>
+              <span>Calidad de oportunidades</span>
+            </div>
+            <div id="evChart" class="bar-chart compact"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="signals" class="view">
+        <div class="table-toolbar">
+          <input id="signalSearch" type="search" placeholder="Buscar señal, mercado o deporte">
+          <span id="signalsCount"></span>
+        </div>
+        <div id="signalsList" class="signal-list"></div>
+      </section>
+
+      <section id="trades" class="view">
+        <div class="table-toolbar">
+          <input id="tradeSearch" type="search" placeholder="Buscar apuesta, mercado o estado">
+          <span id="tradesCount"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Mercado</th>
+                <th>Deporte</th>
+                <th>Side</th>
+                <th>Stake</th>
+                <th>Odds</th>
+                <th>Prob.</th>
+                <th>EV</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody id="tradesTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="markets" class="view">
+        <div id="marketsGrid" class="market-grid"></div>
+      </section>
+
+      <section id="sources" class="view">
+        <div id="sourcesGrid" class="sources-grid"></div>
+      </section>
+
+      <section id="settings" class="view">
+        <div class="settings-grid">
+          <section class="panel">
+            <div class="panel-head"><h2>Riesgo</h2><span>Solo lectura</span></div>
+            <div id="riskSettings" class="kv-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2>Estrategia</h2><span>Filtros activos</span></div>
+            <div id="strategySettings" class="kv-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><h2>Agentes</h2><span>Pesos del swarm</span></div>
+            <div id="swarmSettings" class="kv-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

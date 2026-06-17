@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -20,7 +21,7 @@ model User {
 
 // Mercados de Polymarket
 model Market {
-  id          String   @id
+  id          String       @id
   title       String
   description String?
   sport       String
@@ -30,108 +31,123 @@ model Market {
   volume      Float
   liquidity   Float
   expiresAt   DateTime
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
   predictions Prediction[]
   trades      Trade[]
 }
 
 // Predicciones generadas por el sistema
 model Prediction {
-  id              Int      @id @default(autoincrement())
-  marketId        String
-  market          Market   @relation(fields: [marketId], references: [id])
+  id               Int       @id @default(autoincrement())
+  marketId         String
+  market           Market    @relation(fields: [marketId], references: [id])
   predictedOutcome String
-  confidence      Float    // 0-100
-  probability     Float    // 0-1
-  expectedValue   Float
-  kellySize       Float    // Tamaño recomendado de apuesta
-  reasoning       String   // JSON con las razones
-  sources         String   // JSON con fuentes (stats, news, copytrading)
-  status          String   @default("PENDING") // PENDING, ACTIVE, WON, LOST
-  result          Float?   // Resultado final
-  profitLoss      Float?   // Ganancia o pérdida
-  createdAt       DateTime @default(now())
-  resolvedAt      DateTime?
+  confidence       Float // 0-100
+  probability      Float // 0-1
+  expectedValue    Float
+  kellySize        Float // Tamaño recomendado de apuesta
+  reasoning        String // JSON con las razones
+  sources          String // JSON con fuentes (stats, news, copytrading)
+  status           String    @default("PENDING") // PENDING, ACTIVE, WON, LOST
+  result           Float? // Resultado final
+  profitLoss       Float? // Ganancia o pérdida
+  createdAt        DateTime  @default(now())
+  resolvedAt       DateTime?
+  trades           Trade[]
+
+  @@index([marketId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // Trades ejecutados (shadow o reales)
 model Trade {
-  id             Int      @id @default(autoincrement())
-  userId         Int
-  user           User     @relation(fields: [userId], references: [id])
-  marketId       String
-  market         Market   @relation(fields: [marketId], references: [id])
-  predictionId   Int?
-  prediction     Prediction? @relation(fields: [predictionId], references: [id])
-  side           String   // YES o NO
-  stake          Float    // Cantidad apostada
-  odds           Float
+  id              Int         @id @default(autoincrement())
+  userId          Int
+  user            User        @relation(fields: [userId], references: [id])
+  marketId        String
+  market          Market      @relation(fields: [marketId], references: [id])
+  predictionId    Int?
+  prediction      Prediction? @relation(fields: [predictionId], references: [id])
+  side            String // YES o NO
+  stake           Float // Cantidad apostada
+  odds            Float
   potentialProfit Float
-  status         String   @default("OPEN") // OPEN, WON, LOST, CANCELLED
-  result         Float?
-  profitLoss     Float?
-  executedAt     DateTime @default(now())
-  resolvedAt     DateTime?
-  isShadowTrade  Boolean  @default(true)
-  notes          String?
+  status          String      @default("OPEN") // OPEN, WON, LOST, CANCELLED
+  result          Float?
+  profitLoss      Float?
+  executedAt      DateTime    @default(now())
+  resolvedAt      DateTime?
+  isShadowTrade   Boolean     @default(true)
+  notes           String?
+
+  @@index([userId])
+  @@index([marketId])
+  @@index([predictionId])
+  @@index([status])
+  @@index([executedAt])
 }
 
 // Top Traders para Copy Trading
 model TopTrader {
-  id           String   @id
-  walletAddress String   @unique
-  displayName  String?
-  winRate      Float
-  totalTrades  Int
-  profitFactor Float
-  totalProfit  Float
-  reliability  String   // VERY_HIGH, HIGH, MEDIUM, LOW
-  lastActive   DateTime
-  trackedSince DateTime @default(now())
-  copiedTrades Int      @default(0)
+  id            String         @id
+  walletAddress String         @unique
+  displayName   String?
+  winRate       Float
+  totalTrades   Int
+  profitFactor  Float
+  totalProfit   Float
+  reliability   String // VERY_HIGH, HIGH, MEDIUM, LOW
+  lastActive    DateTime
+  trackedSince  DateTime       @default(now())
+  copiedTrades  Int            @default(0)
+  copyTradeLogs CopyTradeLog[]
 }
 
 // Noticias analizadas
 model NewsArticle {
-  id        Int      @id @default(autoincrement())
-  title     String
-  source    String
-  url       String
-  content   String?
-  sentiment Float    // -1 a 1
-  relevance Float    // 0-1
-  sport     String?
-  teams     String?  // JSON array
-  players   String?  // JSON array
+  id          Int      @id @default(autoincrement())
+  title       String
+  source      String
+  url         String
+  content     String?
+  sentiment   Float // -1 a 1
+  relevance   Float // 0-1
+  sport       String?
+  teams       String? // JSON array
+  players     String? // JSON array
   publishedAt DateTime
-  analyzedAt DateTime @default(now())
+  analyzedAt  DateTime @default(now())
 }
 
 // Señales enviadas a Telegram
 model Alert {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  user        User     @relation(fields: [userId], references: [id])
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
   predictionId Int
-  message     String
-  channel     String   // TELEGRAM, EMAIL, DISCORD
-  status      String   @default("SENT") // SENT, DELIVERED, FAILED
-  sentAt      DateTime @default(now())
+  message      String
+  channel      String // TELEGRAM, EMAIL, DISCORD
+  status       String   @default("SENT") // SENT, DELIVERED, FAILED
+  sentAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([predictionId])
 }
 
 // Historial de Copy Trading
 model CopyTradeLog {
-  id           Int      @id @default(autoincrement())
-  topTraderId  String
-  topTrader    TopTrader @relation(fields: [topTraderId], references: [id])
+  id              Int       @id @default(autoincrement())
+  topTraderId     String
+  topTrader       TopTrader @relation(fields: [topTraderId], references: [id])
   originalTradeId String
-  market       String
-  side         String
-  stake        Float
-  copied       Boolean  @default(false)
-  ourStake     Float?
-  result       Float?
-  profitLoss   Float?
-  loggedAt     DateTime @default(now())
+  market          String
+  side            String
+  stake           Float
+  copied          Boolean   @default(false)
+  ourStake        Float?
+  result          Float?
+  profitLoss      Float?
+  loggedAt        DateTime  @default(now())
 }
