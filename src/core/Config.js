@@ -53,6 +53,7 @@ const config = {
     tagIds: listFromEnv('POLYMARKET_TAG_IDS'),
     sportsFocus: boolFromEnv('SPORTS_MARKETS_FOCUS', true),
     sportsTagSlug: process.env.POLYMARKET_SPORTS_TAG_SLUG || 'sports',
+    targetSports: listFromEnv('SPORTS_TARGETS', ['MLB', 'NBA', 'NFL', 'Soccer', 'UFC', 'Boxing', 'F1', 'MotoGP']),
     excludedTerms: listFromEnv('EXCLUDED_MARKET_TERMS', ['crypto price', 'bitcoin', 'ethereum']),
   },
   strategy: {

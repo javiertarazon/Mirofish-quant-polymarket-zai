@@ -2,6 +2,12 @@ const axios = require('axios');
 const config = require('../core/Config');
 const logger = require('../core/Logger');
 const { round } = require('../utils/number');
+const {
+  statusLabel,
+  thesisLabel,
+  translateReason,
+  translateSummary,
+} = require('../utils/i18n');
 
 class TelegramService {
   constructor() {
@@ -10,12 +16,12 @@ class TelegramService {
 
   async initialize() {
     if (!config.telegram.enabled) {
-      logger.info('Telegram disabled');
+      logger.info('Telegram desactivado');
       return;
     }
 
     if (!config.telegram.token || !config.telegram.chatId) {
-      throw new Error('Telegram is enabled but TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing');
+      throw new Error('Telegram esta activado pero falta TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID');
     }
 
     this.client = axios.create({
@@ -30,19 +36,20 @@ class TelegramService {
     const quality = prediction.reasoning.quality || {};
 
     const message = [
-      `MiroFish signal (${prediction.mode}) ${quality.grade ? `Grade ${quality.grade}` : ''}`,
+      `Señal MiroFish (${statusLabel(prediction.mode)}) ${quality.grade ? `Grado ${quality.grade}` : ''}`,
       ``,
       `${prediction.title}`,
-      `Side: ${prediction.side} ${prediction.outcome}`,
-      `Entry: ${round(prediction.entryPrice, 4)}`,
-      `Model probability: ${round(prediction.probability * 100, 2)}%`,
-      `Market probability: ${round(prediction.marketProbability * 100, 2)}%`,
-      `EV: ${round(prediction.expectedValue * 100, 2)}%`,
-      `Confidence: ${round(prediction.confidence, 1)}%`,
-      `Swarm: score ${round(prediction.reasoning.swarmScore, 3)} / agreement ${round(prediction.reasoning.swarmAgreement * 100, 1)}%`,
-      `Stake: ${round(prediction.kellySize, 2)} USDC`,
-      `Execution: ${prediction.reasoning.quality?.automaticExecutionAllowed ? 'automatic shadow' : 'manual approval required'}`,
-      `Reason: ${prediction.reasoning.summary}`,
+      `Tesis: ${thesisLabel(prediction.reasoning?.thesis || 'SIGNAL')}`,
+      `Lado: ${statusLabel(prediction.side)} ${statusLabel(prediction.outcome)}`,
+      `Entrada: ${round(prediction.entryPrice, 4)}`,
+      `Probabilidad del modelo: ${round(prediction.probability * 100, 2)}%`,
+      `Probabilidad del mercado: ${round(prediction.marketProbability * 100, 2)}%`,
+      `Valor esperado: ${round(prediction.expectedValue * 100, 2)}%`,
+      `Confianza: ${round(prediction.confidence, 1)}%`,
+      `Enjambre: puntaje ${round(prediction.reasoning.swarmScore, 3)} / acuerdo ${round(prediction.reasoning.swarmAgreement * 100, 1)}%`,
+      `Monto: ${round(prediction.kellySize, 2)} USDC`,
+      `Ejecución: ${prediction.reasoning.quality?.automaticExecutionAllowed ? 'simulación automática' : 'requiere aprobación manual'}`,
+      `Motivo: ${translateSummary(prediction.reasoning.summary)}`,
     ].join('\n');
 
     const { data } = await this.client.post('/sendMessage', {
@@ -58,15 +65,15 @@ class TelegramService {
     if (!this.client) return { skipped: true };
 
     const message = [
-      'MiroFish cycle summary',
+      'Resumen del ciclo MiroFish',
       '',
-      `Candidates: ${stats.candidates}`,
-      `Analyzed: ${stats.analyzed}`,
-      `Signals: ${stats.signals}`,
-      `Executed: ${stats.executed}`,
-      `Queued: ${stats.queued || 0}`,
-      `Rejected: ${stats.rejected}`,
-      `Top rejections: ${Object.entries(rejectionSummary || {}).slice(0, 4).map(([reason, count]) => `${reason} (${count})`).join(', ') || 'none'}`,
+      `Candidatos: ${stats.candidates}`,
+      `Analizados: ${stats.analyzed}`,
+      `Señales: ${stats.signals}`,
+      `Ejecutadas: ${stats.executed}`,
+      `En cola: ${stats.queued || 0}`,
+      `Rechazadas: ${stats.rejected}`,
+      `Principales rechazos: ${Object.entries(rejectionSummary || {}).slice(0, 4).map(([reason, count]) => `${translateReason(reason)} (${count})`).join(', ') || 'ninguno'}`,
     ].join('\n');
 
     const { data } = await this.client.post('/sendMessage', {

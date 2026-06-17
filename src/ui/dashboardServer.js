@@ -7,6 +7,15 @@ const { MiroFishQuant } = require('../index');
 const { RiskManager } = require('../engine/RiskManager');
 const { getSourceProfile, SOURCE_REGISTRY, BETTING_SOURCES } = require('../services/sports/SportsSourceRegistry');
 const { inferSportFromText } = require('../utils/teams');
+const {
+  classificationLabel,
+  sportLabel,
+  statusLabel,
+  thesisLabel,
+  translateAgent,
+  translateReason,
+  translateSummary,
+} = require('../utils/i18n');
 
 const prisma = new PrismaClient();
 const publicDir = path.resolve(__dirname, '../../public');
@@ -47,17 +56,17 @@ async function routeApi(req, url, res, cycleController) {
   if (url.pathname === '/api/config') return sendJson(res, 200, getPublicConfig());
   if (url.pathname === '/api/cycle/status') return sendJson(res, 200, cycleController.getState());
   if (url.pathname === '/api/cycle') {
-    if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'Metodo no permitido' });
     const result = cycleController.start();
     return sendJson(res, result.status, result.body);
   }
   const executeMatch = url.pathname.match(/^\/api\/predictions\/(\d+)\/execute$/);
   if (executeMatch) {
-    if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'Metodo no permitido' });
     const result = await executePrediction(Number(executeMatch[1]));
     return sendJson(res, result.status, result.body);
   }
-  sendJson(res, 404, { error: 'Not found' });
+  sendJson(res, 404, { error: 'No encontrado' });
 }
 
 function createCycleController(appFactory = () => new MiroFishQuant()) {
@@ -82,12 +91,12 @@ function createCycleController(appFactory = () => new MiroFishQuant()) {
       if (!initialized) {
         initialized = await app.initialize();
         state.initialized = initialized;
-        if (!initialized) throw new Error('Dashboard cycle runner initialization failed');
+        if (!initialized) throw new Error('No se pudo inicializar el ejecutor de ciclos del dashboard');
       }
 
       const result = await app.startTradingCycle();
       state.lastResult = result;
-      if (result?.ok === false) state.lastError = result.error || { message: 'Trading cycle failed' };
+      if (result?.ok === false) state.lastError = result.error || { message: 'El ciclo de trading fallo' };
     } catch (error) {
       state.lastError = {
         message: error.message,
@@ -109,13 +118,13 @@ function createCycleController(appFactory = () => new MiroFishQuant()) {
       if (config.execution.mode !== 'shadow') {
         return {
           status: 403,
-          body: { error: 'Manual dashboard cycles are only allowed when TRADING_MODE=shadow' },
+          body: { error: 'Los ciclos manuales del dashboard solo estan permitidos con TRADING_MODE=shadow' },
         };
       }
       if (state.running) {
         return {
           status: 409,
-          body: { error: 'Trading cycle already running', state: this.getState() },
+          body: { error: 'Ya hay un ciclo de trading en ejecucion', state: this.getState() },
         };
       }
 
@@ -231,11 +240,14 @@ async function getTrades(limit) {
     marketId: trade.marketId,
     title: trade.market?.title || trade.marketId,
     sport: resolveMarketSport(trade.market),
+    sportLabel: sportLabel(resolveMarketSport(trade.market)),
     side: trade.side,
+    sideLabel: statusLabel(trade.side),
     stake: trade.stake,
     odds: trade.odds,
     potentialProfit: trade.potentialProfit,
     status: trade.status,
+    statusLabel: statusLabel(trade.status),
     shadow: trade.isShadowTrade,
     executedAt: trade.executedAt,
     resolvedAt: trade.resolvedAt,
@@ -244,6 +256,7 @@ async function getTrades(limit) {
     expectedValue: trade.prediction?.expectedValue || null,
     kellySize: trade.prediction?.kellySize || null,
     notes: trade.notes,
+    notesLabel: translateSummary(trade.notes),
   }));
 }
 
@@ -260,12 +273,17 @@ async function getPredictions(limit) {
   return predictions.map((prediction) => {
     const reasoning = parseJson(prediction.reasoning);
     const sources = parseJson(prediction.sources);
+    const sport = resolveMarketSport(prediction.market);
+    const quality = reasoning.quality || signalQualityFromPrediction(prediction, reasoning);
+    const executionStatus = prediction.trades.length ? 'EXECUTED' : 'PENDING';
     return {
       id: prediction.id,
       marketId: prediction.marketId,
       title: prediction.market?.title || prediction.marketId,
-      sport: resolveMarketSport(prediction.market),
+      sport,
+      sportLabel: sportLabel(sport),
       predictedOutcome: prediction.predictedOutcome,
+      predictedOutcomeLabel: statusLabel(prediction.predictedOutcome),
       confidence: prediction.confidence,
       probability: prediction.probability,
       impliedProbability: reasoning.impliedProbability ?? prediction.market?.odds ?? null,
@@ -274,32 +292,39 @@ async function getPredictions(limit) {
       expectedValue: prediction.expectedValue,
       kellySize: prediction.kellySize,
       status: prediction.status,
+      statusLabel: statusLabel(prediction.status),
       createdAt: prediction.createdAt,
       thesis: reasoning.thesis || null,
-      summary: reasoning.summary || '',
-      agents: reasoning.agents || [],
+      thesisLabel: thesisLabel(reasoning.thesis || 'SIGNAL'),
+      summary: translateSummary(reasoning.summary || ''),
+      agents: (reasoning.agents || []).map(translateAgent),
       kelly: reasoning.kelly || null,
-      quality: reasoning.quality || signalQualityFromPrediction(prediction, reasoning),
+      quality: {
+        ...quality,
+        classificationLabel: classificationLabel(quality.classification),
+        executionBlockedReasonLabel: quality.executionBlockedReason ? translateReason(quality.executionBlockedReason) : null,
+      },
       swarmScore: reasoning.swarmScore ?? null,
       swarmAgreement: reasoning.swarmAgreement ?? null,
       sources,
       trades: prediction.trades.length,
-      executionStatus: prediction.trades.length ? 'EXECUTED' : 'PENDING',
+      executionStatus,
+      executionStatusLabel: statusLabel(executionStatus),
     };
   });
 }
 
 async function executePrediction(predictionId) {
   if (config.execution.mode !== 'shadow') {
-    return { status: 403, body: { error: 'Manual execution is only enabled in shadow mode' } };
+    return { status: 403, body: { error: 'La ejecucion manual solo esta habilitada en modo simulacion' } };
   }
 
   const prediction = await prisma.prediction.findUnique({
     where: { id: predictionId },
     include: { market: true, trades: true },
   });
-  if (!prediction) return { status: 404, body: { error: 'Prediction not found' } };
-  if (prediction.trades.length) return { status: 409, body: { error: 'Prediction already has an execution' } };
+  if (!prediction) return { status: 404, body: { error: 'Prediccion no encontrada' } };
+  if (prediction.trades.length) return { status: 409, body: { error: 'La prediccion ya tiene una ejecucion' } };
 
   const risk = new RiskManager({
     getOpenTradeCount: () => prisma.trade.count({ where: { status: 'OPEN' } }),
@@ -317,12 +342,12 @@ async function executePrediction(predictionId) {
     },
   });
   const gate = await risk.canOpenTrade();
-  if (!gate.allowed) return { status: 409, body: { error: gate.reason } };
+  if (!gate.allowed) return { status: 409, body: { error: translateReason(gate.reason) } };
 
   const reasoning = parseJson(prediction.reasoning);
   const entryPrice = Number(reasoning.impliedProbability ?? prediction.market?.odds ?? 0);
   if (!entryPrice || entryPrice <= 0 || entryPrice >= 1) {
-    return { status: 422, body: { error: 'Prediction has no executable entry price' } };
+    return { status: 422, body: { error: 'La prediccion no tiene precio de entrada ejecutable' } };
   }
 
   const user = await prisma.user.upsert({
@@ -341,7 +366,7 @@ async function executePrediction(predictionId) {
       potentialProfit: prediction.kellySize * ((1 / entryPrice) - 1),
       status: 'OPEN',
       isShadowTrade: true,
-      notes: `Manual dashboard shadow execution for ${prediction.predictedOutcome}.`,
+      notes: `Ejecucion manual simulada desde el dashboard para ${prediction.predictedOutcome}.`,
     },
   });
 
@@ -362,26 +387,39 @@ async function getMarkets(limit) {
     },
   });
 
-  return markets.map((market) => ({
-    id: market.id,
-    title: market.title,
-    sport: resolveMarketSport(market),
-    category: market.category,
-    outcome: market.outcome,
-    odds: market.odds,
-    volume: market.volume,
-    liquidity: market.liquidity,
-    expiresAt: market.expiresAt,
-    isActive: market.isActive,
-    predictionCount: market._count.predictions,
-    tradeCount: market._count.trades,
-    sources: getSourceProfile(resolveMarketSport(market)),
-  }));
+  return markets.map((market) => {
+    const sport = resolveMarketSport(market);
+    return {
+      id: market.id,
+      title: market.title,
+      sport,
+      sportLabel: sportLabel(sport),
+      category: market.category,
+      categoryLabel: market.category === 'general' ? 'General' : market.category,
+      outcome: market.outcome,
+      outcomeLabel: statusLabel(market.outcome),
+      odds: market.odds,
+      volume: market.volume,
+      liquidity: market.liquidity,
+      expiresAt: market.expiresAt,
+      isActive: market.isActive,
+      activeLabel: market.isActive ? 'Activa' : 'Inactiva',
+      predictionCount: market._count.predictions,
+      tradeCount: market._count.trades,
+      sources: getSourceProfile(sport),
+    };
+  });
 }
 
 function getSources() {
   return {
-    sports: SOURCE_REGISTRY,
+    sports: Object.fromEntries(Object.entries(SOURCE_REGISTRY).map(([sport, profile]) => [
+      sport,
+      {
+        ...profile,
+        sportLabel: sportLabel(sport),
+      },
+    ])),
     betting: BETTING_SOURCES,
   };
 }
@@ -436,7 +474,7 @@ async function serveStatic(requestPath, res) {
   const targetPath = path.normalize(path.join(publicDir, normalizedPath));
 
   if (!targetPath.startsWith(publicDir)) {
-    sendText(res, 403, 'Forbidden');
+    sendText(res, 403, 'Prohibido');
     return;
   }
 
@@ -510,6 +548,7 @@ function groupBySport(predictions) {
 
   return [...map.values()].map((item) => ({
     ...item,
+    sportLabel: sportLabel(item.sport),
     avgConfidence: round(item.avgConfidence / item.count, 2),
     avgProbability: round(item.avgProbability / item.count, 4),
     avgExpectedValue: round(item.avgExpectedValue / item.count, 4),
@@ -609,6 +648,7 @@ function signalQualityFromPrediction(prediction, reasoning = {}) {
     positiveSwarm,
     strongValue,
     automaticExecutionAllowed: config.execution.autoExecuteSignals,
+    executionBlockedReason: null,
   };
 }
 

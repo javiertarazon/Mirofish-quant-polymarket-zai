@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>MiroFish Quant Dashboard</title>
+    <title>Panel MiroFish Quant</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
@@ -12,7 +12,7 @@
         <div class="brand-mark">MQ</div>
         <div>
           <strong>MiroFish Quant</strong>
-          <span>Polymarket Sports Desk</span>
+          <span>Mesa deportiva Polymarket</span>
         </div>
       </div>
       <nav class="nav">
@@ -40,7 +40,7 @@
         </div>
         <div class="top-actions">
           <div class="cycle-status" id="cycleStatus">Ciclo inactivo</div>
-          <button id="runCycleBtn" class="icon-button" title="Ejecutar ciclo shadow">▶</button>
+          <button id="runCycleBtn" class="icon-button" title="Ejecutar ciclo simulado">▶</button>
           <select id="sportFilter" aria-label="Filtrar deporte">
             <option value="all">Todos los deportes</option>
           </select>
@@ -51,11 +51,11 @@
       <section id="overview" class="view active">
         <div class="metric-grid">
           <article class="metric"><span>Señales</span><strong id="metricPredictions">0</strong><small>Predicciones guardadas</small></article>
-          <article class="metric"><span>Apuestas shadow</span><strong id="metricTrades">0</strong><small>Historial local</small></article>
+          <article class="metric"><span>Apuestas simuladas</span><strong id="metricTrades">0</strong><small>Historial local</small></article>
           <article class="metric"><span>Abiertas</span><strong id="metricOpen">0</strong><small>Límite de riesgo activo</small></article>
           <article class="metric"><span>Confianza media</span><strong id="metricConfidence">0%</strong><small>Modelo + agentes</small></article>
-          <article class="metric"><span>EV medio</span><strong id="metricEv">0</strong><small>Expected value</small></article>
-          <article class="metric"><span>Kelly medio</span><strong id="metricKelly">$0</strong><small>Stake sugerido</small></article>
+          <article class="metric"><span>Valor esperado medio</span><strong id="metricEv">0</strong><small>Ventaja esperada</small></article>
+          <article class="metric"><span>Kelly medio</span><strong id="metricKelly">$0</strong><small>Monto sugerido</small></article>
           <article class="metric"><span>Alta probabilidad</span><strong id="metricHighSignals">0</strong><small>Confirmadas por enjambre</small></article>
           <article class="metric"><span>Valor alto</span><strong id="metricValueSignals">0</strong><small>EV fuerte sin consenso</small></article>
           <article class="metric"><span>Mercados deportivos</span><strong id="metricSportsMarkets">0</strong><small>Especialización activa</small></article>
@@ -99,9 +99,9 @@
               <tr>
                 <th>Mercado</th>
                 <th>Deporte</th>
-                <th>Side</th>
-                <th>Stake</th>
-                <th>Odds</th>
+                <th>Lado</th>
+                <th>Monto</th>
+                <th>Cuota</th>
                 <th>Prob.</th>
                 <th>EV</th>
                 <th>Estado</th>
@@ -132,7 +132,7 @@
             <div id="strategySettings" class="kv-list"></div>
           </section>
           <section class="panel">
-            <div class="panel-head"><h2>Agentes</h2><span>Pesos del swarm</span></div>
+            <div class="panel-head"><h2>Agentes</h2><span>Pesos del enjambre</span></div>
             <div id="swarmSettings" class="kv-list"></div>
           </section>
         </div>

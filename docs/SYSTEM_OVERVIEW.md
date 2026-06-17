@@ -5,7 +5,7 @@ MiroFish Quant V5 es un bot cuantitativo para mercados de prediccion de Polymark
 ## Flujo principal
 
 1. `src/index.js` inicia base de datos, Telegram y motor de prediccion.
-2. `PredictionEngine.scanActiveMarkets()` consulta primero eventos deportivos en Polymarket Gamma API usando `tag_slug=sports` y despues usa mercados generales como respaldo.
+2. `PredictionEngine.scanActiveMarkets()` consulta primero eventos deportivos en Polymarket Gamma API usando `tag_slug=sports`, clasifica por deporte y selecciona candidatos con balance por `SPORTS_TARGETS`.
 3. `PolymarketClient.parseMarketsFromEvents()` normaliza eventos y mercados.
 4. El motor aplica filtros estaticos: token disponible, mercado vigente, liquidez y volumen.
 5. Para cada mercado candidato se lee el orderbook publico CLOB.
@@ -14,9 +14,9 @@ MiroFish Quant V5 es un bot cuantitativo para mercados de prediccion de Polymark
 8. `SwarmOrchestrator` ejecuta agentes especializados y combina sus votos.
 9. El motor calcula edge, gap de infravaloracion, expected value, confianza y stake Kelly.
 10. El motor asigna un grado de señal (`A+`, `A`, `B`, `C`) usando probabilidad, confianza, acuerdo del enjambre y valor esperado.
-11. `RiskManager` valida limites de riesgo y trades abiertos.
-12. `DatabaseManager` guarda mercado, prediccion y trade shadow.
-13. Si `AUTO_EXECUTE_SIGNALS=false`, el trade no se abre automaticamente y queda pendiente para ejecucion manual en el dashboard.
+11. `RiskManager` valida limites de riesgo y trades abiertos para decidir si la señal puede ejecutarse.
+12. `DatabaseManager` guarda mercado y prediccion aunque la ejecucion quede bloqueada por riesgo.
+13. Si la ejecucion esta permitida y `AUTO_EXECUTE_SIGNALS=true`, se registra el trade shadow. Si no, queda pendiente para seguimiento o ejecucion manual en el dashboard.
 14. `TelegramService` envia alertas y resumen de ciclo si esta configurado.
 
 ## Componentes principales

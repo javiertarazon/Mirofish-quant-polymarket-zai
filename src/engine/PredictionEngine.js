@@ -24,10 +24,54 @@ class PredictionEngine {
     const events = await this.client.fetchActiveEvents();
     const markets = this.client.parseMarketsFromEvents(events);
 
-    return markets
+    const candidates = markets
       .filter((market) => this.passesStaticFilters(market))
-      .sort((a, b) => sportPriority(b) - sportPriority(a))
-      .slice(0, config.strategy.maxMarketsPerCycle);
+      .sort(compareMarketPriority);
+
+    return this.selectMarketsForCycle(candidates);
+  }
+
+  selectMarketsForCycle(markets) {
+    const limit = config.strategy.maxMarketsPerCycle;
+    const targetSports = config.polymarket.targetSports;
+    const selected = [];
+    const selectedIds = new Set();
+    const sportsBuckets = new Map();
+    const general = [];
+
+    for (const market of markets) {
+      const sport = market.sport || 'general';
+      if (sport === 'general') {
+        general.push(market);
+        continue;
+      }
+      if (!sportsBuckets.has(sport)) sportsBuckets.set(sport, []);
+      sportsBuckets.get(sport).push(market);
+    }
+
+    const orderedSports = [
+      ...targetSports.filter((sport) => sportsBuckets.has(sport)),
+      ...[...sportsBuckets.keys()].filter((sport) => !targetSports.includes(sport)).sort(),
+    ];
+
+    while (selected.length < limit && orderedSports.some((sport) => sportsBuckets.get(sport)?.length)) {
+      for (const sport of orderedSports) {
+        if (selected.length >= limit) break;
+        const market = sportsBuckets.get(sport)?.shift();
+        if (!market || selectedIds.has(market.id)) continue;
+        selected.push(market);
+        selectedIds.add(market.id);
+      }
+    }
+
+    for (const market of general) {
+      if (selected.length >= limit) break;
+      if (selectedIds.has(market.id)) continue;
+      selected.push(market);
+      selectedIds.add(market.id);
+    }
+
+    return selected;
   }
 
   async generatePrediction(market) {
@@ -64,17 +108,16 @@ class PredictionEngine {
     if (expectedValue < config.strategy.minExpectedValue) return this.reject(market, `EV below threshold (${round(expectedValue, 4)})`);
     if (confidence < config.strategy.minConfidence) return this.reject(market, `confidence below threshold (${round(confidence, 2)}%)`);
 
-    const riskGate = await this.risk.canOpenTrade();
-    if (!riskGate.allowed) return this.reject(market, riskGate.reason);
-
     const sizing = this.risk.calculateStakeDetails(signal.probability, micro.entryPrice);
     if (sizing.stake <= 0) return this.reject(market, 'risk model returned zero stake');
+    const riskGate = await this.risk.canOpenTrade();
     const quality = this.signalQuality({
       confidence,
       probability: signal.probability,
       expectedValue,
       undervaluationGap,
       swarm,
+      riskGate,
     });
 
     return {
@@ -112,6 +155,7 @@ class PredictionEngine {
         swarmShift: swarm.probabilityShift,
         swarmAgreement: swarm.agreement,
         kelly: sizing,
+        riskGate,
         agents: swarm.results.map(result => ({
           name: result.name,
           enabled: result.enabled,
@@ -238,7 +282,7 @@ class PredictionEngine {
     return clamp(edgeScore + evScore + spreadScore + liquidityScore + volumeScore, 0, 100);
   }
 
-  signalQuality({ confidence, probability, expectedValue, undervaluationGap, swarm }) {
+  signalQuality({ confidence, probability, expectedValue, undervaluationGap, swarm, riskGate = { allowed: true } }) {
     const highProbability = probability >= config.strategy.highProbabilityThreshold;
     const highConfidence = confidence >= config.strategy.highConfidenceThreshold;
     const positiveSwarm = swarm.score > 0 && swarm.agreement >= config.strategy.highSwarmAgreementThreshold;
@@ -264,7 +308,8 @@ class PredictionEngine {
       highConfidence,
       positiveSwarm,
       strongValue,
-      automaticExecutionAllowed: config.execution.autoExecuteSignals,
+      automaticExecutionAllowed: config.execution.autoExecuteSignals && riskGate.allowed,
+      executionBlockedReason: riskGate.allowed ? null : riskGate.reason,
       thresholds: {
         probability: config.strategy.highProbabilityThreshold,
         confidence: config.strategy.highConfidenceThreshold,
@@ -295,6 +340,18 @@ function normalizeLevels(levels) {
 }
 
 module.exports = { PredictionEngine };
+
+function compareMarketPriority(a, b) {
+  const sportDiff = sportPriority(b) - sportPriority(a);
+  if (sportDiff !== 0) return sportDiff;
+  const volumeDiff = marketActivityScore(b) - marketActivityScore(a);
+  if (volumeDiff !== 0) return volumeDiff;
+  return String(a.title || '').localeCompare(String(b.title || ''));
+}
+
+function marketActivityScore(market) {
+  return Math.max(Number(market.volume24h || 0), Number(market.volume || 0)) + Number(market.liquidity || 0);
+}
 
 function sportPriority(market) {
   return market.sport && market.sport !== 'general' ? 1 : 0;

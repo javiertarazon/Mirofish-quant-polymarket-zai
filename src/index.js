@@ -76,12 +76,13 @@ class MiroFishQuant {
 
         const savedPrediction = await this.db.savePrediction(prediction);
         await this.telegram.sendSignal(prediction);
-        if (config.execution.autoExecuteSignals) {
+        if (prediction.reasoning.quality?.automaticExecutionAllowed) {
           await this.engine.executeTrade(prediction, savedPrediction.id);
           stats.executed += 1;
         } else {
           stats.queued += 1;
-          logger.info(`Signal queued for manual execution ${prediction.marketId}`);
+          const reason = prediction.reasoning.quality?.executionBlockedReason || 'manual execution required';
+          logger.info(`Signal queued for manual execution ${prediction.marketId}: ${reason}`);
         }
       }
 

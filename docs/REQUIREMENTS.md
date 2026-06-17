@@ -45,6 +45,7 @@ El modo `shadow` es el modo seguro por defecto. Persiste predicciones y trades s
 - `MIN_PROBABILITY_EDGE`, `MIN_UNDERVALUATION_GAP`: edge minimo frente al precio de entrada.
 - `SPORTS_MARKETS_FOCUS=true`: consulta primero mercados con `tag_slug=sports` en Polymarket.
 - `POLYMARKET_SPORTS_TAG_SLUG=sports`: slug usado para el universo deportivo de Polymarket.
+- `SPORTS_TARGETS=MLB,NBA,NFL,Soccer,UFC,Boxing,F1,MotoGP`: deportes priorizados por el balanceador del ciclo. Evita que un solo deporte con mucho volumen ocupe todos los cupos.
 - `HIGH_PROBABILITY_THRESHOLD`, `HIGH_CONFIDENCE_THRESHOLD`, `HIGH_SWARM_AGREEMENT_THRESHOLD`: umbrales para marcar señales deportivas grado A/A+.
 - `AUTO_EXECUTE_SIGNALS=true`: ejecuta automaticamente trades `shadow`; si es `false`, las señales quedan pendientes para ejecucion manual desde el dashboard.
 

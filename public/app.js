@@ -13,11 +13,49 @@ const state = {
 
 const titles = {
   overview: ['Resumen', 'Estado operativo, probabilidades, señales y riesgo.'],
-  signals: ['Señales', 'Probabilidades, edge, Kelly, agentes y fuentes por mercado.'],
-  trades: ['Apuestas', 'Historial shadow/live con stake, odds y resultados.'],
+  signals: ['Señales', 'Probabilidades, ventaja, Kelly, agentes y fuentes por mercado.'],
+  trades: ['Apuestas', 'Historial simulado/real con monto, cuota y resultados.'],
   markets: ['Mercados', 'Mercados persistidos, liquidez, volumen y vencimiento.'],
   sources: ['Fuentes', 'Estadísticas oficiales, noticias y proveedores externos por deporte.'],
   settings: ['Riesgo', 'Parámetros activos del modelo y gestión de bankroll.'],
+};
+
+const configLabels = {
+  bankroll: 'Bankroll',
+  maxStake: 'Monto máximo',
+  maxStakePct: 'Monto máximo %',
+  kellyFraction: 'Fracción Kelly',
+  maxOpenTrades: 'Apuestas abiertas máximas',
+  dailyLossLimitPct: 'Pérdida diaria máxima %',
+  minLiquidity: 'Liquidez mínima',
+  minVolume: 'Volumen mínimo',
+  maxSpread: 'Spread máximo',
+  minExpectedValue: 'Valor esperado mínimo',
+  minConfidence: 'Confianza mínima',
+  minProbabilityEdge: 'Ventaja mínima de probabilidad',
+  minUndervaluationGap: 'Brecha mínima de infravaloración',
+  highProbabilityThreshold: 'Umbral de alta probabilidad',
+  highConfidenceThreshold: 'Umbral de alta confianza',
+  highSwarmAgreementThreshold: 'Acuerdo mínimo del enjambre',
+  enabled: 'Activo',
+  newsWeight: 'Peso noticias',
+  sportsWeight: 'Peso contexto deportivo',
+  officialSourcesWeight: 'Peso fuentes oficiales',
+  topTraderWeight: 'Peso traders destacados',
+  holderWeight: 'Peso holders',
+  marketMoodWeight: 'Peso pulso del mercado',
+  externalOddsWeight: 'Peso cuotas externas',
+};
+
+const localSportLabels = {
+  all: 'Todos los deportes',
+  general: 'General',
+  Soccer: 'Fútbol',
+  Football: 'Fútbol americano',
+  Basketball: 'Baloncesto',
+  Baseball: 'Béisbol',
+  Boxing: 'Boxeo',
+  Racing: 'Motor',
 };
 
 const fmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
@@ -89,7 +127,7 @@ function renderSportChart() {
   const max = Math.max(...rows.map((item) => item.count), 1);
   html('sportChart', rows.length ? rows.map((item) => `
     <div class="bar-row">
-      <strong>${escapeHtml(item.sport)}</strong>
+      <strong>${escapeHtml(item.sportLabel || labelSport(item.sport))}</strong>
       <div class="bar-track"><div class="bar-fill" style="width:${(item.count / max) * 100}%"></div></div>
       <span class="bar-value">${item.count} / ${item.avgConfidence}%</span>
     </div>
@@ -112,7 +150,7 @@ function renderSignals() {
   const query = document.getElementById('signalSearch').value.toLowerCase();
   const rows = state.predictions
     .filter(matchesSport)
-    .filter((item) => searchable(item, query, ['title', 'sport', 'predictedOutcome', 'summary']))
+    .filter((item) => searchable(item, query, ['title', 'sport', 'sportLabel', 'predictedOutcome', 'predictedOutcomeLabel', 'summary']))
     .sort(sportsFirst);
 
   text('signalsCount', `${rows.length} señales`);
@@ -121,12 +159,15 @@ function renderSignals() {
 
 function signalCard(item) {
   const agents = (item.agents || []).map((agent) => `
-    <span class="pill ${agent.enabled ? 'active' : ''}">${escapeHtml(agent.name)} ${num(agent.score, 2)}</span>
+    <span class="pill ${agent.enabled ? 'active' : ''}" title="${escapeHtml((agent.notes || []).join(' | '))}">${escapeHtml(agent.label || agent.name)} ${num(agent.score, 2)}</span>
   `).join('');
   const gradeClass = item.quality?.grade?.startsWith('A') ? 'buy' : item.quality?.grade === 'B' ? 'warn' : '';
   const executeButton = item.executionStatus === 'PENDING' && state.config?.execution?.manualShadowExecution
-    ? `<button class="action-button" data-execute-prediction="${item.id}">Ejecutar shadow</button>`
-    : `<span class="pill ${item.executionStatus === 'EXECUTED' ? 'active' : ''}">${escapeHtml(item.executionStatus)}</span>`;
+    ? `<button class="action-button" data-execute-prediction="${item.id}">Ejecutar simulación</button>`
+    : `<span class="pill ${item.executionStatus === 'EXECUTED' ? 'active' : ''}">${escapeHtml(item.executionStatusLabel || item.executionStatus)}</span>`;
+  const riskNote = item.quality?.executionBlockedReasonLabel
+    ? `<span class="pill warn">${escapeHtml(item.quality.executionBlockedReasonLabel)}</span>`
+    : '';
 
   return `
     <article class="signal-card">
@@ -134,16 +175,17 @@ function signalCard(item) {
         <div>
           <div class="signal-title">${escapeHtml(item.title)}</div>
           <div class="signal-meta">
-            <span class="pill active">${escapeHtml(item.sport)}</span>
+            <span class="pill active">${escapeHtml(item.sportLabel || labelSport(item.sport))}</span>
             <span class="pill ${gradeClass}">Grado ${escapeHtml(item.quality?.grade || 'C')}</span>
-            <span class="pill ${item.quality?.classification === 'SWARM_CONFIRMED' ? 'buy' : item.quality?.classification === 'VALUE_ONLY' ? 'warn' : ''}">${qualityLabel(item.quality?.classification)}</span>
-            <span class="pill">${escapeHtml(item.predictedOutcome)}</span>
-            <span class="pill ${item.status === 'ACTIVE' ? 'active' : ''}">${escapeHtml(item.status)}</span>
+            <span class="pill ${item.quality?.classification === 'SWARM_CONFIRMED' ? 'buy' : item.quality?.classification === 'VALUE_ONLY' ? 'warn' : ''}">${escapeHtml(item.quality?.classificationLabel || qualityLabel(item.quality?.classification))}</span>
+            <span class="pill">${escapeHtml(item.predictedOutcomeLabel || item.predictedOutcome)}</span>
+            <span class="pill ${item.status === 'ACTIVE' ? 'active' : ''}">${escapeHtml(item.statusLabel || item.status)}</span>
             <span class="pill">${new Date(item.createdAt).toLocaleString()}</span>
           </div>
         </div>
         <div class="signal-actions">
-          <span class="pill buy">${escapeHtml(item.thesis || 'SIGNAL')}</span>
+          <span class="pill buy">${escapeHtml(item.thesisLabel || item.thesis || 'Señal')}</span>
+          ${riskNote}
           ${executeButton}
         </div>
       </div>
@@ -158,7 +200,7 @@ function signalCard(item) {
       <div class="quality-grid">
         ${qualityFlag('Prob.', item.quality?.highProbability)}
         ${qualityFlag('Conf.', item.quality?.highConfidence)}
-        ${qualityFlag('Swarm', item.quality?.positiveSwarm)}
+        ${qualityFlag('Enjambre', item.quality?.positiveSwarm)}
         ${qualityFlag('Valor', item.quality?.strongValue)}
       </div>
       <p>${escapeHtml(item.summary || '')}</p>
@@ -181,20 +223,20 @@ function renderTrades() {
   const query = document.getElementById('tradeSearch').value.toLowerCase();
   const rows = state.trades
     .filter(matchesSport)
-    .filter((item) => searchable(item, query, ['title', 'sport', 'side', 'status']))
+    .filter((item) => searchable(item, query, ['title', 'sport', 'sportLabel', 'side', 'sideLabel', 'status', 'statusLabel']))
     .sort(sportsFirst);
 
   text('tradesCount', `${rows.length} apuestas`);
   html('tradesTable', rows.map((item) => `
     <tr>
       <td><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.marketId)}</small></td>
-      <td>${escapeHtml(item.sport)}</td>
-      <td><span class="pill buy">${escapeHtml(item.side)}</span></td>
+      <td>${escapeHtml(item.sportLabel || labelSport(item.sport))}</td>
+      <td><span class="pill buy">${escapeHtml(item.sideLabel || item.side)}</span></td>
       <td>${usd(item.stake)}</td>
       <td>${num(item.odds, 4)}</td>
       <td>${pct(item.probability)}</td>
       <td>${num(item.expectedValue, 4)}</td>
-      <td><span class="pill ${item.status === 'OPEN' ? 'active' : 'closed'}">${escapeHtml(item.status)}</span></td>
+      <td><span class="pill ${item.status === 'OPEN' ? 'active' : 'closed'}">${escapeHtml(item.statusLabel || item.status)}</span></td>
       <td>${new Date(item.executedAt).toLocaleString()}</td>
     </tr>
   `).join('') || `<tr><td colspan="9">${empty('No hay apuestas con este filtro')}</td></tr>`);
@@ -206,13 +248,13 @@ function renderMarkets() {
     <article class="market-card">
       <h3>${escapeHtml(item.title)}</h3>
       <div class="signal-meta">
-        <span class="pill active">${escapeHtml(item.sport)}</span>
-        <span class="pill">${escapeHtml(item.category)}</span>
-        <span class="pill ${item.isActive ? 'active' : 'closed'}">${item.isActive ? 'Activo' : 'Inactivo'}</span>
+        <span class="pill active">${escapeHtml(item.sportLabel || labelSport(item.sport))}</span>
+        <span class="pill">${escapeHtml(item.categoryLabel || item.category)}</span>
+        <span class="pill ${item.isActive ? 'active' : 'closed'}">${escapeHtml(item.activeLabel || (item.isActive ? 'Activa' : 'Inactiva'))}</span>
       </div>
       <div class="stats">
-        <div class="stat"><span>Outcome</span><strong>${escapeHtml(item.outcome)}</strong></div>
-        <div class="stat"><span>Odds</span><strong>${num(item.odds, 4)}</strong></div>
+        <div class="stat"><span>Resultado</span><strong>${escapeHtml(item.outcomeLabel || item.outcome)}</strong></div>
+        <div class="stat"><span>Cuota</span><strong>${num(item.odds, 4)}</strong></div>
         <div class="stat"><span>Volumen</span><strong>${usd(item.volume)}</strong></div>
         <div class="stat"><span>Liquidez</span><strong>${usd(item.liquidity)}</strong></div>
         <div class="stat"><span>Señales</span><strong>${item.predictionCount}</strong></div>
@@ -228,11 +270,11 @@ function renderSources() {
 
   html('sourcesGrid', entries.map(([sport, profile]) => `
     <article class="source-card">
-      <h3>${escapeHtml(sport)}</h3>
+      <h3>${escapeHtml(profile.sportLabel || labelSport(sport))}</h3>
       <div class="stats">
-        <div class="stat"><span>Stats oficiales</span><strong>${profile.officialStats.length}</strong></div>
+        <div class="stat"><span>Estadísticas oficiales</span><strong>${profile.officialStats.length}</strong></div>
         <div class="stat"><span>Noticias oficiales</span><strong>${profile.officialNews.length}</strong></div>
-        <div class="stat"><span>Scrapeables</span><strong>${scrapeableCount(profile)}</strong></div>
+        <div class="stat"><span>Extraíbles</span><strong>${scrapeableCount(profile)}</strong></div>
         <div class="stat"><span>Modo</span><strong>Web</strong></div>
       </div>
       <div class="source-links">
@@ -276,7 +318,7 @@ function renderCycleStatus() {
 
   const stats = cycle.lastResult?.stats;
   if (stats) {
-    text('cycleStatus', `Último ciclo: ${stats.signals} señales, ${stats.executed} shadow`);
+    text('cycleStatus', `Último ciclo: ${stats.signals} señales, ${stats.executed} simuladas`);
     return;
   }
 
@@ -319,7 +361,7 @@ function pollCycleUntilIdle() {
 
 function renderKv(id, object) {
   html(id, Object.entries(object).map(([key, value]) => `
-    <div class="kv-row"><span>${escapeHtml(key)}</span><strong>${escapeHtml(String(value))}</strong></div>
+    <div class="kv-row"><span>${escapeHtml(configLabels[key] || key)}</span><strong>${escapeHtml(formatSettingValue(value))}</strong></div>
   `).join(''));
 }
 
@@ -332,7 +374,7 @@ function populateSportFilter() {
   for (const sport of Object.keys(state.sources?.sports || {})) sports.add(sport);
 
   filter.innerHTML = [...sports].map((sport) => `
-    <option value="${escapeHtml(sport)}">${sport === 'all' ? 'Todos los deportes' : escapeHtml(sport)}</option>
+    <option value="${escapeHtml(sport)}">${escapeHtml(labelSport(sport))}</option>
   `).join('');
   filter.value = [...sports].includes(current) ? current : 'all';
   state.sport = filter.value;
@@ -362,8 +404,19 @@ function setStatus(title, subtitle, ok) {
 }
 
 function link(source) {
-  const badge = source.scrapeable ? '<span class="mini-badge">scrape</span>' : '';
+  const badge = source.scrapeable ? '<span class="mini-badge">extraíble</span>' : '';
   return `<a href="${escapeAttr(source.url)}" target="_blank" rel="noreferrer">${escapeHtml(source.name)} ${badge}</a>`;
+}
+
+function labelSport(sport) {
+  return localSportLabels[sport] || sport || 'General';
+}
+
+function formatSettingValue(value) {
+  if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+  if (value === 'shadow') return 'Simulación';
+  if (value === 'live') return 'Real';
+  return String(value);
 }
 
 function empty(message) {
