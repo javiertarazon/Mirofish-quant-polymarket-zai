@@ -34,6 +34,11 @@ class SportsContextAgent {
 
     if (fixtures.length) notes.push(`${fixtures.length} fixture match(es) from sports API`);
     if (officialContext.fixtures.length) notes.push(`${officialContext.fixtures.length} official fixture match(es)`);
+    if (!teams.home && !teams.away && officialContext.fixtures.length) {
+      const futureScore = Math.min(0.35, officialContext.fixtures.length * 0.04);
+      score += futureScore;
+      notes.push(`official futures context ${futureScore.toFixed(3)}`);
+    }
     if (officialContext.records.length >= 2) {
       const recordScore = recordDifferential(officialContext.records, teams);
       score += recordScore * 0.25;

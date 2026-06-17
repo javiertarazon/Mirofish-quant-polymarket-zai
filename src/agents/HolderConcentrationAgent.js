@@ -17,7 +17,9 @@ class HolderConcentrationAgent {
       .slice(0, 5)
       .reduce((sum, amount) => sum + amount, 0);
     const concentration = total > 0 ? topFive / total : 0;
-    const score = total > 0 ? Math.max(-1, Math.min(1, (0.55 - concentration) * 2)) : 0;
+    const sparseMarket = holders.length < 60;
+    const threshold = sparseMarket ? 0.75 : 0.55;
+    const score = total > 0 ? Math.max(-1, Math.min(1, (threshold - concentration) * (sparseMarket ? 1.2 : 2))) : 0;
     const confidence = Math.min(1, holders.length / 20);
 
     return agentResult({
@@ -25,7 +27,7 @@ class HolderConcentrationAgent {
       score,
       confidence,
       probabilityShift: score * confidence * 0.018,
-      notes: [`${holders.length} holders`, `top5 concentration ${(concentration * 100).toFixed(1)}%`],
+      notes: [`${holders.length} holders`, `top5 concentration ${(concentration * 100).toFixed(1)}%`, sparseMarket ? 'sparse futures market' : 'mature holder set'],
       data: {
         holderCount: holders.length,
         total,

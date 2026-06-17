@@ -5,6 +5,7 @@ const { ExternalOddsAgent } = require('./ExternalOddsAgent');
 const { HolderConcentrationAgent } = require('./HolderConcentrationAgent');
 const { MarketMoodAgent } = require('./MarketMoodAgent');
 const { NewsSentimentAgent } = require('./NewsSentimentAgent');
+const { OfficialSourcesAgent } = require('./OfficialSourcesAgent');
 const { SportsContextAgent } = require('./SportsContextAgent');
 const { TopTraderAgent } = require('./TopTraderAgent');
 
@@ -13,6 +14,7 @@ class SwarmOrchestrator {
     this.agents = [
       { weight: config.swarm.newsWeight, instance: new NewsSentimentAgent() },
       { weight: config.swarm.sportsWeight, instance: new SportsContextAgent() },
+      { weight: config.swarm.officialSourcesWeight, instance: new OfficialSourcesAgent() },
       { weight: config.swarm.topTraderWeight, instance: new TopTraderAgent(polymarketClient) },
       { weight: config.swarm.holderWeight, instance: new HolderConcentrationAgent(polymarketClient) },
       { weight: config.swarm.marketMoodWeight, instance: new MarketMoodAgent() },

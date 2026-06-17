@@ -46,6 +46,7 @@ MiroFish Quant V5 es un bot cuantitativo para mercados de prediccion de Polymark
 
 - `NewsSentimentAgent`: analiza sentimiento y relevancia de noticias.
 - `SportsContextAgent`: incorpora contexto deportivo y fixtures cuando hay API disponible.
+- `OfficialSourcesAgent`: verifica cobertura y relevancia en fuentes oficiales scrapeables cuando no hay API dedicada.
 - `TopTraderAgent`: revisa leaderboard y actividad de traders publicos de Polymarket.
 - `HolderConcentrationAgent`: mide concentracion de holders.
 - `MarketMoodAgent`: estima sesgo de profundidad, spread y liquidez del orderbook.

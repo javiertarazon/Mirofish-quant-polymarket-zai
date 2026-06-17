@@ -418,6 +418,7 @@ function getPublicConfig() {
       enabled: config.swarm.enabled,
       newsWeight: config.swarm.newsWeight,
       sportsWeight: config.swarm.sportsWeight,
+      officialSourcesWeight: config.swarm.officialSourcesWeight,
       topTraderWeight: config.swarm.topTraderWeight,
       holderWeight: config.swarm.holderWeight,
       marketMoodWeight: config.swarm.marketMoodWeight,
