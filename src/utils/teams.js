@@ -131,16 +131,20 @@ function findLocation(team) {
 }
 
 function inferSportFromTitle(title) {
-  const text = String(title || '').toLowerCase();
+  return inferSportFromText(title);
+}
+
+function inferSportFromText(...parts) {
+  const text = parts.map(part => String(part || '')).join(' ').toLowerCase();
   const candidates = [
     [/ufc|\bmma\b|mixed martial arts|fight night|ultimate fighting/, 'UFC'],
     [/boxing|boxeo|wba|wbc|ibf|wbo|heavyweight|welterweight|middleweight|lightweight|featherweight/, 'Boxing'],
     [/formula\s*1|formula one|\bf1\b|grand prix/, 'F1'],
     [/motogp|moto gp/, 'MotoGP'],
-    [/\bnba\b|celtics|lakers|knicks|warriors|thunder|pacers|mavericks|nuggets/, 'NBA'],
-    [/\bnfl\b|chiefs|eagles|cowboys|ravens|bills|packers|steelers|49ers/, 'NFL'],
-    [/\bmlb\b|baseball|yankees|dodgers|mets|red sox|pirates|athletics|phillies|padres/, 'MLB'],
-    [/soccer|football|fifa|premier league|la liga|champions league|world cup|uruguay|spain|france|iran/, 'Soccer'],
+    [/\bnba\b|basketball|celtics|lakers|knicks|warriors|thunder|pacers|mavericks|nuggets|timberwolves|cavaliers|bucks|suns|heat|magic|raptors|bulls|nets|spurs|rockets|grizzlies|pelicans|jazz|trail blazers|clippers/, 'NBA'],
+    [/\bnfl\b|american football|super bowl|chiefs|eagles|cowboys|ravens|bills|packers|steelers|49ers|bengals|lions|broncos|vikings|patriots|jets|giants|commanders|seahawks|raiders|chargers|rams|buccaneers|titans|colts|jaguars|texans|saints|panthers|falcons|cardinals/, 'NFL'],
+    [/\bmlb\b|baseball|world series|yankees|dodgers|mets|red sox|pirates|athletics|phillies|padres|giants|mariners|astros|rangers|blue jays|orioles|braves|cubs|white sox|guardians|royals|tigers|twins|brewers|cardinals|reds|marlins|nationals|rays|rockies|diamondbacks|angels/, 'MLB'],
+    [/soccer|fútbol|futbol|fifa|premier league|la liga|champions league|europa league|world cup|copa america|libertadores|mls|uefa|real madrid|barcelona|manchester|liverpool|arsenal|chelsea|inter milan|juventus|psg/, 'Soccer'],
   ];
   const match = candidates.find(([pattern]) => pattern.test(text));
   return match ? match[1] : 'general';
@@ -161,4 +165,4 @@ function toRad(value) {
   return value * (Math.PI / 180);
 }
 
-module.exports = { distanceMiles, extractTeams, findLocation, inferSportFromTitle };
+module.exports = { distanceMiles, extractTeams, findLocation, inferSportFromText, inferSportFromTitle };

@@ -51,6 +51,8 @@ const config = {
     requestTimeoutMs: numberFromEnv('HTTP_TIMEOUT_MS', 15_000, { min: 1000 }),
     marketLimit: numberFromEnv('MARKET_SCAN_LIMIT', 50, { min: 1, max: 500 }),
     tagIds: listFromEnv('POLYMARKET_TAG_IDS'),
+    sportsFocus: boolFromEnv('SPORTS_MARKETS_FOCUS', true),
+    sportsTagSlug: process.env.POLYMARKET_SPORTS_TAG_SLUG || 'sports',
     excludedTerms: listFromEnv('EXCLUDED_MARKET_TERMS', ['crypto price', 'bitcoin', 'ethereum']),
   },
   strategy: {

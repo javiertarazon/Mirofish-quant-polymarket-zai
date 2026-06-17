@@ -5,7 +5,7 @@ MiroFish Quant V5 es un bot cuantitativo para mercados de prediccion de Polymark
 ## Flujo principal
 
 1. `src/index.js` inicia base de datos, Telegram y motor de prediccion.
-2. `PredictionEngine.scanActiveMarkets()` consulta eventos activos en Polymarket Gamma API.
+2. `PredictionEngine.scanActiveMarkets()` consulta primero eventos deportivos en Polymarket Gamma API usando `tag_slug=sports` y despues usa mercados generales como respaldo.
 3. `PolymarketClient.parseMarketsFromEvents()` normaliza eventos y mercados.
 4. El motor aplica filtros estaticos: token disponible, mercado vigente, liquidez y volumen.
 5. Para cada mercado candidato se lee el orderbook publico CLOB.
@@ -32,6 +32,7 @@ MiroFish Quant V5 es un bot cuantitativo para mercados de prediccion de Polymark
 - `src/services/news/NewsApiClient.js`: consulta NewsAPI.
 - `src/services/odds/OddsApiClient.js`: consulta The Odds API.
 - `src/services/sports/*`: registra fuentes oficiales, noticias y proveedores por deporte.
+- Las fuentes oficiales sin API dedicada se tratan como paginas scrapeables: el cliente descarga HTML, extrae titulo, descripcion y enlaces relevantes para equipos/mercados.
 
 ### Motor
 

@@ -5,6 +5,7 @@ const { PrismaClient } = require('../generated/prisma');
 const config = require('../core/Config');
 const { MiroFishQuant } = require('../index');
 const { getSourceProfile, SOURCE_REGISTRY, BETTING_SOURCES } = require('../services/sports/SportsSourceRegistry');
+const { inferSportFromText } = require('../utils/teams');
 
 const prisma = new PrismaClient();
 const publicDir = path.resolve(__dirname, '../../public');
@@ -175,6 +176,7 @@ async function getSummary() {
 
   const sportBreakdown = groupBySport(recentPredictions);
   const evBuckets = bucketExpectedValue(recentPredictions);
+  const marketSportCounts = await getMarketSportCounts();
 
   return {
     generatedAt: now.toISOString(),
@@ -187,6 +189,8 @@ async function getSummary() {
       predictions,
       activePredictions,
       markets,
+      sportsMarkets: marketSportCounts.sportsMarkets,
+      generalMarkets: marketSportCounts.generalMarkets,
       todaySignals,
     },
     averages: {
@@ -216,7 +220,7 @@ async function getTrades(limit) {
     id: trade.id,
     marketId: trade.marketId,
     title: trade.market?.title || trade.marketId,
-    sport: trade.market?.sport || 'general',
+    sport: resolveMarketSport(trade.market),
     side: trade.side,
     stake: trade.stake,
     odds: trade.odds,
@@ -250,7 +254,7 @@ async function getPredictions(limit) {
       id: prediction.id,
       marketId: prediction.marketId,
       title: prediction.market?.title || prediction.marketId,
-      sport: prediction.market?.sport || 'general',
+      sport: resolveMarketSport(prediction.market),
       predictedOutcome: prediction.predictedOutcome,
       confidence: prediction.confidence,
       probability: prediction.probability,
@@ -288,7 +292,7 @@ async function getMarkets(limit) {
   return markets.map((market) => ({
     id: market.id,
     title: market.title,
-    sport: market.sport,
+    sport: resolveMarketSport(market),
     category: market.category,
     outcome: market.outcome,
     odds: market.odds,
@@ -298,7 +302,7 @@ async function getMarkets(limit) {
     isActive: market.isActive,
     predictionCount: market._count.predictions,
     tradeCount: market._count.trades,
-    sources: getSourceProfile(market.sport),
+    sources: getSourceProfile(resolveMarketSport(market)),
   }));
 }
 
@@ -408,7 +412,7 @@ function round(value, digits = 4) {
 function groupBySport(predictions) {
   const map = new Map();
   for (const prediction of predictions) {
-    const sport = prediction.market?.sport || 'general';
+    const sport = resolveMarketSport(prediction.market);
     const item = map.get(sport) || {
       sport,
       count: 0,
@@ -429,6 +433,28 @@ function groupBySport(predictions) {
     avgProbability: round(item.avgProbability / item.count, 4),
     avgExpectedValue: round(item.avgExpectedValue / item.count, 4),
   }));
+}
+
+async function getMarketSportCounts() {
+  const markets = await prisma.market.findMany({
+    select: {
+      title: true,
+      description: true,
+      sport: true,
+      category: true,
+    },
+  });
+  const sportsMarkets = markets.filter(market => resolveMarketSport(market) !== 'general').length;
+  return {
+    sportsMarkets,
+    generalMarkets: markets.length - sportsMarkets,
+  };
+}
+
+function resolveMarketSport(market) {
+  if (!market) return 'general';
+  if (market.sport && market.sport !== 'general') return market.sport;
+  return inferSportFromText(market.title, market.description, market.category);
 }
 
 function bucketExpectedValue(predictions) {

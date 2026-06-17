@@ -43,6 +43,8 @@ El modo `shadow` es el modo seguro por defecto. Persiste predicciones y trades s
 - `MIN_LIQUIDITY`, `MIN_VOLUME`, `MAX_SPREAD`: filtros de calidad de mercado.
 - `MIN_EXPECTED_VALUE`, `MIN_CONFIDENCE`: umbrales minimos de senal.
 - `MIN_PROBABILITY_EDGE`, `MIN_UNDERVALUATION_GAP`: edge minimo frente al precio de entrada.
+- `SPORTS_MARKETS_FOCUS=true`: consulta primero mercados con `tag_slug=sports` en Polymarket.
+- `POLYMARKET_SPORTS_TAG_SLUG=sports`: slug usado para el universo deportivo de Polymarket.
 
 ## APIs externas opcionales
 

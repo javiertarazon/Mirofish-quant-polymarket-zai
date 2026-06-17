@@ -26,6 +26,7 @@ class PredictionEngine {
 
     return markets
       .filter((market) => this.passesStaticFilters(market))
+      .sort((a, b) => sportPriority(b) - sportPriority(a))
       .slice(0, config.strategy.maxMarketsPerCycle);
   }
 
@@ -251,3 +252,7 @@ function normalizeLevels(levels) {
 }
 
 module.exports = { PredictionEngine };
+
+function sportPriority(market) {
+  return market.sport && market.sport !== 'general' ? 1 : 0;
+}

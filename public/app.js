@@ -76,6 +76,8 @@ function renderOverview() {
   text('metricConfidence', summary.averages.confidence === null ? '-' : `${summary.averages.confidence.toFixed(1)}%`);
   text('metricEv', num(summary.averages.expectedValue, 3));
   text('metricKelly', usd(summary.averages.kellySize));
+  text('metricSportsMarkets', summary.counts.sportsMarkets);
+  text('metricGeneralMarkets', summary.counts.generalMarkets);
   renderSportChart();
   renderEvChart();
 }
@@ -108,7 +110,8 @@ function renderSignals() {
   const query = document.getElementById('signalSearch').value.toLowerCase();
   const rows = state.predictions
     .filter(matchesSport)
-    .filter((item) => searchable(item, query, ['title', 'sport', 'predictedOutcome', 'summary']));
+    .filter((item) => searchable(item, query, ['title', 'sport', 'predictedOutcome', 'summary']))
+    .sort(sportsFirst);
 
   text('signalsCount', `${rows.length} señales`);
   html('signalsList', rows.length ? rows.map(signalCard).join('') : empty('No hay señales con este filtro'));
@@ -150,7 +153,8 @@ function renderTrades() {
   const query = document.getElementById('tradeSearch').value.toLowerCase();
   const rows = state.trades
     .filter(matchesSport)
-    .filter((item) => searchable(item, query, ['title', 'sport', 'side', 'status']));
+    .filter((item) => searchable(item, query, ['title', 'sport', 'side', 'status']))
+    .sort(sportsFirst);
 
   text('tradesCount', `${rows.length} apuestas`);
   html('tradesTable', rows.map((item) => `
@@ -169,7 +173,7 @@ function renderTrades() {
 }
 
 function renderMarkets() {
-  const rows = state.markets.filter(matchesSport);
+  const rows = state.markets.filter(matchesSport).sort(sportsFirst);
   html('marketsGrid', rows.length ? rows.map((item) => `
     <article class="market-card">
       <h3>${escapeHtml(item.title)}</h3>
@@ -200,6 +204,8 @@ function renderSources() {
       <div class="stats">
         <div class="stat"><span>Stats oficiales</span><strong>${profile.officialStats.length}</strong></div>
         <div class="stat"><span>Noticias oficiales</span><strong>${profile.officialNews.length}</strong></div>
+        <div class="stat"><span>Scrapeables</span><strong>${scrapeableCount(profile)}</strong></div>
+        <div class="stat"><span>Modo</span><strong>Web</strong></div>
       </div>
       <div class="source-links">
         ${profile.officialStats.map(link).join('')}
@@ -214,6 +220,10 @@ function renderSettings() {
   renderKv('riskSettings', state.config?.risk || {});
   renderKv('strategySettings', state.config?.strategy || {});
   renderKv('swarmSettings', state.config?.swarm || {});
+}
+
+function scrapeableCount(profile) {
+  return [...(profile.officialStats || []), ...(profile.officialNews || [])].filter(source => source.scrapeable).length;
 }
 
 function renderCycleStatus() {
@@ -309,6 +319,13 @@ function searchable(item, query, keys) {
   return keys.some((key) => String(item[key] || '').toLowerCase().includes(query));
 }
 
+function sportsFirst(a, b) {
+  const aSport = a.sport && a.sport !== 'general' ? 1 : 0;
+  const bSport = b.sport && b.sport !== 'general' ? 1 : 0;
+  if (aSport !== bSport) return bSport - aSport;
+  return String(a.title || '').localeCompare(String(b.title || ''));
+}
+
 function setStatus(title, subtitle, ok) {
   text('statusText', title);
   text('statusMeta', subtitle);
@@ -317,7 +334,8 @@ function setStatus(title, subtitle, ok) {
 }
 
 function link(source) {
-  return `<a href="${escapeAttr(source.url)}" target="_blank" rel="noreferrer">${escapeHtml(source.name)}</a>`;
+  const badge = source.scrapeable ? '<span class="mini-badge">scrape</span>' : '';
+  return `<a href="${escapeAttr(source.url)}" target="_blank" rel="noreferrer">${escapeHtml(source.name)} ${badge}</a>`;
 }
 
 function empty(message) {

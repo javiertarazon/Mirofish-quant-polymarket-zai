@@ -2,6 +2,7 @@ const axios = require('axios');
 const config = require('../core/Config');
 const logger = require('../core/Logger');
 const { toNumber } = require('../utils/number');
+const { inferSportFromText } = require('../utils/teams');
 
 class PolymarketClient {
   constructor() {
@@ -24,7 +25,7 @@ class PolymarketClient {
   }
 
   async fetchActiveEvents() {
-    const params = {
+    const baseParams = {
       active: true,
       closed: false,
       limit: config.polymarket.marketLimit,
@@ -33,10 +34,25 @@ class PolymarketClient {
     };
 
     if (config.polymarket.tagIds.length === 1) {
-      params.tag_id = config.polymarket.tagIds[0];
-      params.related_tags = true;
+      return this.fetchEvents({
+        ...baseParams,
+        tag_id: config.polymarket.tagIds[0],
+        related_tags: true,
+      });
     }
 
+    if (config.polymarket.sportsFocus) {
+      const [sportsEvents, generalEvents] = await Promise.all([
+        this.fetchEvents({ ...baseParams, tag_slug: config.polymarket.sportsTagSlug }),
+        this.fetchEvents(baseParams),
+      ]);
+      return uniqueEvents([...sportsEvents, ...generalEvents]);
+    }
+
+    return this.fetchEvents(baseParams);
+  }
+
+  async fetchEvents(params) {
     const { data } = await this.gamma.get('/events', { params });
     return Array.isArray(data) ? data : data.events || [];
   }
@@ -226,36 +242,31 @@ function inferCategory(event, market) {
 }
 
 function inferSport(event, market) {
-  const text = `${event.title || ''} ${market.question || ''} ${JSON.stringify(event.tags || [])}`.toLowerCase();
-  const candidates = [
-    ['formula 1', 'F1'],
-    ['formula one', 'F1'],
-    ['f1', 'F1'],
-    ['motogp', 'MotoGP'],
-    ['moto gp', 'MotoGP'],
-    ['nba', 'NBA'],
-    ['nfl', 'NFL'],
-    ['mlb', 'MLB'],
-    ['baseball', 'MLB'],
-    ['soccer', 'Soccer'],
-    ['football', 'Football'],
-    ['fifa', 'Soccer'],
-    ['premier league', 'Soccer'],
-    ['la liga', 'Soccer'],
-    ['champions league', 'Soccer'],
-    ['ufc', 'UFC'],
-    ['mma', 'MMA'],
-    ['boxing', 'Boxing'],
-    ['boxeo', 'Boxing'],
-    ['wba', 'Boxing'],
-    ['wbc', 'Boxing'],
-    ['ibf', 'Boxing'],
-    ['wbo', 'Boxing'],
-    ['tennis', 'Tennis'],
-  ];
+  return inferSportFromText(
+    event.title,
+    event.slug,
+    event.category,
+    event.description,
+    market.question,
+    market.title,
+    market.slug,
+    market.category,
+    market.description,
+    JSON.stringify(event.tags || []),
+    JSON.stringify(market.tags || []),
+  );
+}
 
-  const match = candidates.find(([needle]) => text.includes(needle));
-  return match ? match[1] : 'general';
+function uniqueEvents(events) {
+  const seen = new Set();
+  const result = [];
+  for (const event of events) {
+    const key = String(event.id || event.slug || event.title);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(event);
+  }
+  return result;
 }
 
 module.exports = { PolymarketClient };
