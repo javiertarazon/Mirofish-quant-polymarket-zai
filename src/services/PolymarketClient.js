@@ -53,8 +53,22 @@ class PolymarketClient {
   }
 
   async fetchEvents(params) {
-    const { data } = await this.gamma.get('/events', { params });
-    return Array.isArray(data) ? data : data.events || [];
+    let allEvents = [];
+    let offset = 0;
+    const limit = Math.min(params.limit || 100, 100);
+    const targetLimit = params.limit || 100;
+    
+    while (allEvents.length < targetLimit) {
+      const currentParams = { ...params, limit, offset };
+      const { data } = await this.gamma.get('/events', { params: currentParams });
+      const events = Array.isArray(data) ? data : data.events || [];
+      
+      if (!events || events.length === 0) break;
+      allEvents = allEvents.concat(events);
+      offset += limit;
+    }
+    
+    return allEvents.slice(0, targetLimit);
   }
 
   async fetchOrderBook(tokenId) {

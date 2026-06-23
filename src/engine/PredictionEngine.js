@@ -5,6 +5,7 @@ const { SwarmOrchestrator } = require('../agents/SwarmOrchestrator');
 const { RiskManager } = require('./RiskManager');
 const { TradeExecutor } = require('./TradeExecutor');
 const { clamp, round, toNumber } = require('../utils/number');
+const { selectByCategory, classifyMarket, MARKET_TYPES } = require('./MarketClassifier');
 
 class PredictionEngine {
   constructor(db) {
@@ -35,50 +36,30 @@ class PredictionEngine {
   }
 
   selectMarketsForCycle(markets) {
-    const limit = config.strategy.maxMarketsPerCycle;
-    const targetSports = config.polymarket.targetSports;
-    const selected = [];
-    const selectedIds = new Set();
-    const sportsBuckets = new Map();
-    const general = [];
+    const slotConfig = {
+      dailyMatch: config.strategy.maxDailyMatchSlots,
+      knockout: config.strategy.maxKnockoutSlots,
+      specialEvent: config.strategy.maxSpecialEventSlots,
+      total: config.strategy.maxMarketsPerCycle,
+    };
 
-    for (const market of markets) {
-      const sport = market.sport || 'general';
-      if (sport === 'general') {
-        general.push(market);
-        continue;
-      }
-      if (!sportsBuckets.has(sport)) sportsBuckets.set(sport, []);
-      sportsBuckets.get(sport).push(market);
+    const selected = selectByCategory(markets, slotConfig);
+
+    // Log de distribución por categoría
+    const summary = {};
+    for (const market of selected) {
+      const label = market.marketType?.code || 'FUTURES';
+      summary[label] = (summary[label] || 0) + 1;
     }
-
-    const orderedSports = [
-      ...targetSports.filter((sport) => sportsBuckets.has(sport)),
-      ...[...sportsBuckets.keys()].filter((sport) => !targetSports.includes(sport)).sort(),
-    ];
-
-    while (selected.length < limit && orderedSports.some((sport) => sportsBuckets.get(sport)?.length)) {
-      for (const sport of orderedSports) {
-        if (selected.length >= limit) break;
-        const market = sportsBuckets.get(sport)?.shift();
-        if (!market || selectedIds.has(market.id)) continue;
-        selected.push(market);
-        selectedIds.add(market.id);
-      }
-    }
-
-    for (const market of general) {
-      if (selected.length >= limit) break;
-      if (selectedIds.has(market.id)) continue;
-      selected.push(market);
-      selectedIds.add(market.id);
-    }
+    logger.info('Market selection by category', summary);
 
     return selected;
   }
 
   async generatePrediction(market) {
     this.lastRejection = null;
+    const marketType = market.marketType?.label || classifyMarket(market).label;
+    logger.debug(`Analyzing [${marketType}] ${market.title}`);
 
     const yesBook = await this.client.fetchOrderBook(market.yesTokenId);
     if (!yesBook) return this.reject(market, 'orderbook unavailable');
@@ -197,8 +178,19 @@ class PredictionEngine {
   passesStaticFilters(market) {
     if (!market.yesTokenId) return false;
     if (market.endDate <= new Date()) return false;
-    if (market.liquidity < config.strategy.minLiquidity) return false;
-    if (Math.max(market.volume, market.volume24h) < config.strategy.minVolume) return false;
+
+    // Para partidos del día usamos umbrales relajados
+    const classification = classifyMarket(market);
+    const isDailyMatch = classification.code === MARKET_TYPES.DAILY_MATCH.code;
+    const minLiquidity = isDailyMatch
+      ? config.strategy.dailyMatchMinLiquidity
+      : config.strategy.minLiquidity;
+    const minVolume = isDailyMatch
+      ? config.strategy.dailyMatchMinVolume
+      : config.strategy.minVolume;
+
+    if (market.liquidity < minLiquidity) return false;
+    if (Math.max(market.volume, market.volume24h) < minVolume) return false;
     return true;
   }
 

@@ -65,6 +65,13 @@ const config = {
     minProbabilityEdge: numberFromEnv('MIN_PROBABILITY_EDGE', 0.04, { min: 0, max: 1 }),
     minUndervaluationGap: numberFromEnv('MIN_UNDERVALUATION_GAP', 0.04, { min: 0, max: 1 }),
     maxMarketsPerCycle: numberFromEnv('MAX_MARKETS_PER_CYCLE', 20, { min: 1, max: 200 }),
+    // Slots por categoría de mercado
+    maxDailyMatchSlots: numberFromEnv('MAX_DAILY_MATCH_SLOTS', 10, { min: 0, max: 200 }),
+    maxKnockoutSlots: numberFromEnv('MAX_KNOCKOUT_SLOTS', 5, { min: 0, max: 200 }),
+    maxSpecialEventSlots: numberFromEnv('MAX_SPECIAL_EVENT_SLOTS', 3, { min: 0, max: 200 }),
+    // Umbrales relajados para partidos del día
+    dailyMatchMinLiquidity: numberFromEnv('DAILY_MATCH_MIN_LIQUIDITY', 50, { min: 0 }),
+    dailyMatchMinVolume: numberFromEnv('DAILY_MATCH_MIN_VOLUME', 50, { min: 0 }),
     highProbabilityThreshold: numberFromEnv('HIGH_PROBABILITY_THRESHOLD', 0.62, { min: 0.01, max: 0.99 }),
     highConfidenceThreshold: numberFromEnv('HIGH_CONFIDENCE_THRESHOLD', 85, { min: 0, max: 100 }),
     highSwarmAgreementThreshold: numberFromEnv('HIGH_SWARM_AGREEMENT_THRESHOLD', 0.6, { min: 0, max: 1 }),
