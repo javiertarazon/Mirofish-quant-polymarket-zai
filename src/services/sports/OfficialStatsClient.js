@@ -1,6 +1,22 @@
 const axios = require('axios');
 const config = require('../../core/Config');
 const { getSourceProfile, normalizeSport } = require('./SportsSourceRegistry');
+const { SoccerAdapter } = require('./adapters/SoccerAdapter');
+const { NbaAdapter } = require('./adapters/NbaAdapter');
+const { NflAdapter } = require('./adapters/NflAdapter');
+const { MlbAdapter } = require('./adapters/MlbAdapter');
+const { F1Adapter } = require('./adapters/F1Adapter');
+const { MotoGpAdapter } = require('./adapters/MotoGpAdapter');
+const { NcaaBasketAdapter } = require('./adapters/NcaaBasketAdapter');
+const { BoxingAdapter } = require('./adapters/BoxingAdapter');
+const { UfcAdapter } = require('./adapters/UfcAdapter');
+const { RugbyAdapter } = require('./adapters/RugbyAdapter');
+const { IndyCarAdapter } = require('./adapters/IndyCarAdapter');
+const { FormulaEAdapter } = require('./adapters/FormulaEAdapter');
+const { EsportsAdapter } = require('./adapters/EsportsAdapter');
+const { FootballDataAdapter } = require('./adapters/FootballDataAdapter');
+const { TheSportsDbAdapter } = require('./adapters/TheSportsDbAdapter');
+const { HockeyAdapter } = require('./adapters/HockeyAdapter');
 
 class OfficialStatsClient {
   constructor() {
@@ -10,6 +26,24 @@ class OfficialStatsClient {
       headers: { 'User-Agent': 'MiroFishQuant/5.0' },
     });
     this.cache = new Map();
+    this.adapters = {
+      Soccer: new SoccerAdapter(this),
+      NBA: new NbaAdapter(this),
+      NFL: new NflAdapter(this),
+      MLB: new MlbAdapter(this),
+      F1: new F1Adapter(this),
+      MotoGP: new MotoGpAdapter(this),
+      NCAAB: new NcaaBasketAdapter(this),
+      Boxing: new BoxingAdapter(this),
+      UFC: new UfcAdapter(this),
+      Rugby: new RugbyAdapter(this),
+      IndyCar: new IndyCarAdapter(this),
+      FormulaE: new FormulaEAdapter(this),
+      Esports: new EsportsAdapter(this),
+      Football: new FootballDataAdapter(this),
+      TheSportsDB: new TheSportsDbAdapter(this),
+      Hockey: new HockeyAdapter(this)
+    };
   }
 
   async fetchContext({ sport, teams, date }) {
@@ -23,7 +57,12 @@ class OfficialStatsClient {
       notes: [],
     };
 
-    if (normalizedSport === 'MLB') {
+    if (this.adapters[normalizedSport]) {
+      const adapterData = await this.adapters[normalizedSport].fetchContext({ teams, date });
+      context.records.push(...(adapterData.records || []));
+      context.fixtures.push(...(adapterData.fixtures || []));
+      context.notes.push(...(adapterData.notes || []));
+    } else if (normalizedSport === 'MLB') {
       const mlbContext = await this.fetchMlbScheduleContext({ teams, date });
       context.records.push(...mlbContext.records);
       context.fixtures.push(...mlbContext.fixtures);
@@ -70,6 +109,15 @@ class OfficialStatsClient {
 
   async fetchSourceSnapshots({ sport, limit = 6 } = {}) {
     const normalizedSport = normalizeSport(sport);
+    
+    if (this.adapters[normalizedSport]) {
+      try {
+        return await this.adapters[normalizedSport].fetchSourceSnapshots({ limit });
+      } catch (err) {
+        console.error(`Adapter failed for ${normalizedSport}:`, err.message);
+      }
+    }
+
     const profile = getSourceProfile(normalizedSport);
     const scrapeableSources = [
       ...profile.officialStats,
@@ -174,7 +222,10 @@ function parseOfficialHtml(source, html, teams) {
     extractFirst(text, /<meta[^>]+(?:name|property)=["'](?:description|og:description)["'][^>]+content=["']([^"']+)["']/i)
     || extractFirst(text, /<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["'](?:description|og:description)["']/i),
   );
-  const haystack = `${title} ${description} ${stripTags(text).slice(0, 5000)}`.toLowerCase();
+  
+  const nextDataMatch = extractFirst(text, /<script id="__NEXT_DATA__" type="application\/json">([\s\S]+?)<\/script>/i);
+  const haystack = `${title} ${description} ${stripTags(text).slice(0, 5000)} ${nextDataMatch}`.toLowerCase();
+  
   const keywords = [teams?.away, teams?.home]
     .map(value => String(value || '').toLowerCase())
     .filter(Boolean);

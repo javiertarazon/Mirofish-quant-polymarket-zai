@@ -9,6 +9,8 @@ const state = {
   sport: 'all',
   view: 'overview',
   cyclePoll: null,
+  sportChart: null,
+  evChart: null,
 };
 
 const titles = {
@@ -124,26 +126,119 @@ function renderOverview() {
 
 function renderSportChart() {
   const rows = state.summary.sportBreakdown.filter(matchesSport);
-  const max = Math.max(...rows.map((item) => item.count), 1);
-  html('sportChart', rows.length ? rows.map((item) => `
-    <div class="bar-row">
-      <strong>${escapeHtml(item.sportLabel || labelSport(item.sport))}</strong>
-      <div class="bar-track"><div class="bar-fill" style="width:${(item.count / max) * 100}%"></div></div>
-      <span class="bar-value">${item.count} / ${item.avgConfidence}%</span>
-    </div>
-  `).join('') : empty('Sin señales para este filtro'));
+  const ctx = document.getElementById('sportChartCanvas');
+  
+  if (state.sportChart) {
+    state.sportChart.destroy();
+  }
+  
+  if (!rows.length) {
+    ctx.style.display = 'none';
+    return;
+  }
+  
+  ctx.style.display = 'block';
+  
+  state.sportChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rows.map(item => item.sportLabel || labelSport(item.sport)),
+      datasets: [
+        {
+          label: 'Señales',
+          data: rows.map(item => item.count),
+          backgroundColor: 'rgba(59, 130, 246, 0.7)',
+          borderColor: 'rgba(59, 130, 246, 1)',
+          borderWidth: 2,
+          borderRadius: 8,
+        },
+        {
+          label: 'Confianza Media (%)',
+          data: rows.map(item => item.avgConfidence),
+          backgroundColor: 'rgba(34, 197, 94, 0.7)',
+          borderColor: 'rgba(34, 197, 94, 1)',
+          borderWidth: 2,
+          borderRadius: 8,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: {
+            color: '#cbd5e1'
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(51, 65, 85, 0.5)'
+          },
+          ticks: {
+            color: '#94a3b8'
+          }
+        },
+        x: {
+          grid: {
+            color: 'rgba(51, 65, 85, 0.5)'
+          },
+          ticks: {
+            color: '#94a3b8'
+          }
+        }
+      }
+    }
+  });
 }
 
 function renderEvChart() {
   const rows = state.summary.evBuckets;
-  const max = Math.max(...rows.map((item) => item.count), 1);
-  html('evChart', rows.map((item) => `
-    <div class="bar-row">
-      <strong>${escapeHtml(item.label)}</strong>
-      <div class="bar-track"><div class="bar-fill" style="width:${(item.count / max) * 100}%"></div></div>
-      <span class="bar-value">${item.count}</span>
-    </div>
-  `).join(''));
+  const ctx = document.getElementById('evChartCanvas');
+  
+  if (state.evChart) {
+    state.evChart.destroy();
+  }
+  
+  ctx.style.display = 'block';
+  
+  state.evChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: rows.map(item => item.label),
+      datasets: [{
+        data: rows.map(item => item.count),
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.7)',
+          'rgba(34, 197, 94, 0.7)',
+          'rgba(245, 158, 11, 0.7)',
+          'rgba(239, 68, 68, 0.7)',
+          'rgba(168, 85, 247, 0.7)'
+        ],
+        borderColor: [
+          'rgba(59, 130, 246, 1)',
+          'rgba(34, 197, 94, 1)',
+          'rgba(245, 158, 11, 1)',
+          'rgba(239, 68, 68, 1)',
+          'rgba(168, 85, 247, 1)'
+        ],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#cbd5e1'
+          }
+        }
+      }
+    }
+  });
 }
 
 function renderSignals() {

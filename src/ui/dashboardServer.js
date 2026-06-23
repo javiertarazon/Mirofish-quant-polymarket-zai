@@ -490,6 +490,8 @@ function getPublicConfig() {
       holderWeight: config.swarm.holderWeight,
       marketMoodWeight: config.swarm.marketMoodWeight,
       externalOddsWeight: config.swarm.externalOddsWeight,
+      rosterWeight: config.swarm.rosterWeight,
+      motorsportTechWeight: config.swarm.motorsportTechWeight,
     },
     execution: {
       autoExecuteSignals: config.execution.autoExecuteSignals,

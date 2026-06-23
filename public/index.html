@@ -5,23 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Panel MiroFish Quant</title>
     <link rel="stylesheet" href="/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   </head>
   <body>
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">MQ</div>
+        <div class="brand-mark">🐟</div>
         <div>
           <strong>MiroFish Quant</strong>
           <span>Mesa deportiva Polymarket</span>
         </div>
       </div>
       <nav class="nav">
-        <button class="nav-item active" data-view="overview">Resumen</button>
-        <button class="nav-item" data-view="signals">Señales</button>
-        <button class="nav-item" data-view="trades">Apuestas</button>
-        <button class="nav-item" data-view="markets">Mercados</button>
-        <button class="nav-item" data-view="sources">Fuentes</button>
-        <button class="nav-item" data-view="settings">Riesgo</button>
+        <button class="nav-item active" data-view="overview">📊 Resumen</button>
+        <button class="nav-item" data-view="signals">🚀 Señales</button>
+        <button class="nav-item" data-view="trades">💎 Apuestas</button>
+        <button class="nav-item" data-view="markets">🏟️ Mercados</button>
+        <button class="nav-item" data-view="sources">📰 Fuentes</button>
+        <button class="nav-item" data-view="settings">⚙️ Riesgo</button>
       </nav>
       <div class="status-panel">
         <span class="status-dot" id="statusDot"></span>
@@ -68,14 +69,14 @@
               <h2>Probabilidad Por Deporte</h2>
               <span>Últimas señales</span>
             </div>
-            <div id="sportChart" class="bar-chart"></div>
+            <canvas id="sportChartCanvas" style="max-height: 300px;"></canvas>
           </section>
           <section class="panel">
             <div class="panel-head">
               <h2>Distribución EV</h2>
               <span>Calidad de oportunidades</span>
             </div>
-            <div id="evChart" class="bar-chart compact"></div>
+            <canvas id="evChartCanvas" style="max-height: 300px;"></canvas>
           </section>
         </div>
       </section>

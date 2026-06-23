@@ -85,9 +85,13 @@ const config = {
     holderWeight: numberFromEnv('HOLDER_AGENT_WEIGHT', 0.10, { min: 0, max: 1 }),
     marketMoodWeight: numberFromEnv('MARKET_MOOD_AGENT_WEIGHT', 0.12, { min: 0, max: 1 }),
     externalOddsWeight: numberFromEnv('EXTERNAL_ODDS_AGENT_WEIGHT', 0.08, { min: 0, max: 1 }),
+    rosterWeight: numberFromEnv('ROSTER_AGENT_WEIGHT', 0.15, { min: 0, max: 1 }),
+    motorsportTechWeight: numberFromEnv('MOTORSPORT_TECH_AGENT_WEIGHT', 0.15, { min: 0, max: 1 }),
   },
   news: {
     apiKey: process.env.NEWS_API_KEY || '',
+    gnewsApiKey: process.env.GNEWS_API_KEY || '3f7a2c309c285863ef77c5f5778f556e',
+    currentsApiKey: process.env.CURRENTS_API_KEY || 'WEY8U86-ybAsblAqOf8J5FR4ve500xHnDxwCVqABMd_iSGOY',
     baseUrl: process.env.NEWS_API_URL || 'https://newsapi.org/v2',
     language: process.env.NEWS_LANGUAGE || 'en',
     lookbackHours: numberFromEnv('NEWS_LOOKBACK_HOURS', 48, { min: 1, max: 168 }),
@@ -96,6 +100,9 @@ const config = {
   },
   sportsApi: {
     apiKey: process.env.API_SPORTS_KEY || '',
+    footballDataApiKey: process.env.FOOTBALL_DATA_API_KEY || 'ff2b01adb08842ccb3f479cd3965a4c2',
+    theSportsDbApiKey: process.env.THESPORTSDB_API_KEY || '123',
+    rapidApiKey: process.env.RAPIDAPI_KEY || '9e380915a4msh59d32c576401b8ap185ebfjsn3408c70333a3',
     baseUrl: process.env.API_SPORTS_BASE_URL || 'https://v3.football.api-sports.io',
     host: process.env.API_SPORTS_HOST || '',
     timezone: process.env.SPORTS_TIMEZONE || 'America/New_York',
