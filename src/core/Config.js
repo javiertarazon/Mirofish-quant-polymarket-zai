@@ -5,6 +5,10 @@ dotenv.config({ path: path.resolve(process.cwd(), 'config/data-apis.env') });
 dotenv.config({ override: true });
 dotenv.config({ path: path.resolve(process.cwd(), 'config/.env'), override: true });
 
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'file:./dev.db';
+}
+
 function numberFromEnv(name, fallback, { min = -Infinity, max = Infinity } = {}) {
   const raw = process.env[name];
   const value = raw === undefined || raw === '' ? fallback : Number(raw);
