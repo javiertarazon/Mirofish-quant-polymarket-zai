@@ -1,8 +1,9 @@
 const path = require('path');
 const dotenv = require('dotenv');
 
-dotenv.config();
-dotenv.config({ path: path.resolve(process.cwd(), 'config/.env') });
+dotenv.config({ path: path.resolve(process.cwd(), 'config/data-apis.env') });
+dotenv.config({ override: true });
+dotenv.config({ path: path.resolve(process.cwd(), 'config/.env'), override: true });
 
 function numberFromEnv(name, fallback, { min = -Infinity, max = Infinity } = {}) {
   const raw = process.env[name];
@@ -97,8 +98,8 @@ const config = {
   },
   news: {
     apiKey: process.env.NEWS_API_KEY || '',
-    gnewsApiKey: process.env.GNEWS_API_KEY || '3f7a2c309c285863ef77c5f5778f556e',
-    currentsApiKey: process.env.CURRENTS_API_KEY || 'WEY8U86-ybAsblAqOf8J5FR4ve500xHnDxwCVqABMd_iSGOY',
+    gnewsApiKey: process.env.GNEWS_API_KEY || '',
+    currentsApiKey: process.env.CURRENTS_API_KEY || '',
     baseUrl: process.env.NEWS_API_URL || 'https://newsapi.org/v2',
     language: process.env.NEWS_LANGUAGE || 'en',
     lookbackHours: numberFromEnv('NEWS_LOOKBACK_HOURS', 48, { min: 1, max: 168 }),
@@ -107,9 +108,9 @@ const config = {
   },
   sportsApi: {
     apiKey: process.env.API_SPORTS_KEY || '',
-    footballDataApiKey: process.env.FOOTBALL_DATA_API_KEY || 'ff2b01adb08842ccb3f479cd3965a4c2',
+    footballDataApiKey: process.env.FOOTBALL_DATA_API_KEY || '',
     theSportsDbApiKey: process.env.THESPORTSDB_API_KEY || '123',
-    rapidApiKey: process.env.RAPIDAPI_KEY || '9e380915a4msh59d32c576401b8ap185ebfjsn3408c70333a3',
+    rapidApiKey: process.env.RAPIDAPI_KEY || '',
     baseUrl: process.env.API_SPORTS_BASE_URL || 'https://v3.football.api-sports.io',
     host: process.env.API_SPORTS_HOST || '',
     timezone: process.env.SPORTS_TIMEZONE || 'America/New_York',

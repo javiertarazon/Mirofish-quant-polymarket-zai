@@ -19,7 +19,7 @@ npx prisma generate
 npx prisma migrate dev --name init_schema
 ```
 
-Si se usa la plantilla dentro de `config/`, copia `config/.env.example` a `config/.env`. El cargador de configuracion lee primero `.env` y despues `config/.env`.
+El cargador de configuracion lee primero `config/data-apis.env` para URLs publicas y claves gratuitas/no sensibles de datos; despues lee `.env` y `config/.env` para sobrescribir valores locales o secretos. Si se usa la plantilla dentro de `config/`, copia `config/.env.example` a `config/.env`.
 
 ## Variables obligatorias
 
@@ -48,6 +48,10 @@ El modo `shadow` es el modo seguro por defecto. Persiste predicciones y trades s
 - `SPORTS_TARGETS=MLB,NBA,NFL,Soccer,UFC,Boxing,F1,MotoGP`: deportes priorizados por el balanceador del ciclo. Evita que un solo deporte con mucho volumen ocupe todos los cupos.
 - `HIGH_PROBABILITY_THRESHOLD`, `HIGH_CONFIDENCE_THRESHOLD`, `HIGH_SWARM_AGREEMENT_THRESHOLD`: umbrales para marcar señales deportivas grado A/A+.
 - `AUTO_EXECUTE_SIGNALS=true`: ejecuta automaticamente trades `shadow`; si es `false`, las señales quedan pendientes para ejecucion manual desde el dashboard.
+
+## APIs de datos versionadas
+
+`config/data-apis.env` contiene las claves gratuitas/no sensibles disponibles para descarga de datos: GNews, Currents, RapidAPI, TheSportsDB y Football-Data.org. No debe contener claves privadas de Polymarket, wallet ni tokens personales.
 
 ## APIs externas opcionales
 

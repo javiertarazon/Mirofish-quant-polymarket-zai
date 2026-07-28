@@ -88,6 +88,8 @@ mirofish-quant/
 
 ## Variables clave
 
+La app carga primero `config/data-apis.env`, un archivo versionable con URLs públicas y claves gratuitas/no sensibles para datos estadísticos; después carga `.env` y `config/.env` para sobrescribir valores locales o secretos.
+
 Edita `.env`:
 
 - `TRADING_MODE=shadow`: modo seguro por defecto.
@@ -123,7 +125,14 @@ Deportes cubiertos por fuentes registradas:
 - UFC/MMA: UFC Stats, UFC rankings y UFC News.
 - Boxeo: BoxRec, WBA, WBC, IBF y WBO.
 
-APIs opcionales:
+APIs de datos incluidas en `config/data-apis.env`:
+
+- `GNEWS_API_KEY` y `CURRENTS_API_KEY`: respaldo de noticias deportivas/sentimiento.
+- `RAPIDAPI_KEY`: adaptadores deportivos vía RapidAPI.
+- `THESPORTSDB_API_KEY`: datos públicos de TheSportsDB.
+- `FOOTBALL_DATA_API_KEY`: fixtures/standings de Football-Data.org.
+
+APIs opcionales no incluidas actualmente:
 
 - `NEWS_API_KEY`: activa noticias deportivas y sentimiento.
 - `API_SPORTS_KEY`: activa contexto de fixtures en proveedores API-Sports compatibles.
