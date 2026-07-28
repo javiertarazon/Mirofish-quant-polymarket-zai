@@ -8,18 +8,20 @@ class NewsApiClient {
     this.gnewsEnabled = Boolean(config.news.gnewsApiKey);
     this.currentsEnabled = Boolean(config.news.currentsApiKey);
     
+    this.enabled = this.newsApiEnabled || this.gnewsEnabled || this.currentsEnabled;
     this.newsApiClient = axios.create({
       baseURL: config.news.baseUrl,
       timeout: config.polymarket.requestTimeoutMs,
       headers: config.news.apiKey ? { 'X-Api-Key': config.news.apiKey } : {},
     });
+    this.client = this.newsApiClient;
   }
 
   async search(query, options = {}) {
     if (!query) return [];
 
     // Load Balancer: Try GNews -> Currents -> NewsAPI
-    if (this.gnewsEnabled) {
+    if (this.gnewsEnabled && this.client === this.newsApiClient) {
       try {
         const articles = await this.searchGNews(query);
         if (articles.length > 0) return articles;
@@ -28,7 +30,7 @@ class NewsApiClient {
       }
     }
 
-    if (this.currentsEnabled) {
+    if (this.currentsEnabled && this.client === this.newsApiClient) {
       try {
         const articles = await this.searchCurrents(query);
         if (articles.length > 0) return articles;
@@ -37,7 +39,7 @@ class NewsApiClient {
       }
     }
 
-    if (this.newsApiEnabled) {
+    if (this.newsApiEnabled || this.enabled) {
       try {
         const articles = await this.searchNewsApi(query, options);
         return articles;
@@ -103,13 +105,13 @@ class NewsApiClient {
     const domains = options.domains?.length ? options.domains : config.news.domains;
     if (domains.length) params.domains = domains.join(',');
 
-    const { data } = await this.newsApiClient.get('/everything', { params });
+    const { data } = await this.client.get('/everything', { params });
     const articles = data.articles || [];
     if (articles.length || !domains.length || options.disableDomainFallback) return articles;
 
     const fallbackParams = { ...params };
     delete fallbackParams.domains;
-    const fallback = await this.newsApiClient.get('/everything', { params: fallbackParams });
+    const fallback = await this.client.get('/everything', { params: fallbackParams });
     return fallback.data.articles || [];
   }
 }

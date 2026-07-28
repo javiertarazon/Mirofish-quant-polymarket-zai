@@ -60,8 +60,14 @@ class PolymarketClient {
     
     while (allEvents.length < targetLimit) {
       const currentParams = { ...params, limit, offset };
-      const { data } = await this.gamma.get('/events', { params: currentParams });
-      const events = Array.isArray(data) ? data : data.events || [];
+      let events = [];
+      try {
+        const { data } = await this.gamma.get('/events', { params: currentParams });
+        events = Array.isArray(data) ? data : data.events || [];
+      } catch (error) {
+        logger.warn(`Polymarket events unavailable: ${error.message}`);
+        break;
+      }
       
       if (!events || events.length === 0) break;
       allEvents = allEvents.concat(events);

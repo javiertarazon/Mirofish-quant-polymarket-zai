@@ -1,8 +1,8 @@
 const http = require('http');
 const path = require('path');
 const fs = require('fs/promises');
-const { PrismaClient } = require('../generated/prisma');
 const config = require('../core/Config');
+const { PrismaClient } = require('../generated/prisma');
 const { MiroFishQuant } = require('../index');
 const { RiskManager } = require('../engine/RiskManager');
 const { getSourceProfile, SOURCE_REGISTRY, BETTING_SOURCES } = require('../services/sports/SportsSourceRegistry');
@@ -458,8 +458,19 @@ function getPublicConfig() {
     tradingMode: config.execution.mode,
     liveEnabled: config.execution.liveEnabled,
     telegramEnabled: config.telegram.enabled,
-    newsApiConfigured: Boolean(config.news.apiKey),
+    newsApiConfigured: Boolean(config.news.apiKey || config.news.gnewsApiKey || config.news.currentsApiKey),
+    newsProviders: {
+      newsApi: Boolean(config.news.apiKey),
+      gnews: Boolean(config.news.gnewsApiKey),
+      currents: Boolean(config.news.currentsApiKey),
+    },
     apiSportsConfigured: Boolean(config.sportsApi.apiKey),
+    sportsDataProviders: {
+      apiSports: Boolean(config.sportsApi.apiKey),
+      rapidApi: Boolean(config.sportsApi.rapidApiKey),
+      theSportsDb: Boolean(config.sportsApi.theSportsDbApiKey),
+      footballData: Boolean(config.sportsApi.footballDataApiKey),
+    },
     oddsApiConfigured: Boolean(config.odds.apiKey),
     risk: {
       bankroll: config.risk.bankroll,
